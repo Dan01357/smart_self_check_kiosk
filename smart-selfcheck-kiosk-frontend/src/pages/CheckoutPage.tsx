@@ -45,7 +45,7 @@ const CheckoutPage = () => {
 
     fetchInitialData();
   }, []);
-
+  console.log
   const handleRFIDScanner = () => {
     openKeyboard(async (barcodeValue) => {
       // Find the item in our local state to get the item_id

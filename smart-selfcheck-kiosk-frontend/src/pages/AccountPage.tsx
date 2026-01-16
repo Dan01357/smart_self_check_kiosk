@@ -100,7 +100,6 @@ const AccountPage = () => {
         </div>
         
         {/*Include this if there are holds*/}
-        
         {/* <div className='bg-[#fff3e0] border-l-[5px] border-l-solid border-l-[#ff9800] rounded-[20px] p-[30px] my-[30px]'>
           <div className="text-[28px] font-bold text-[#e65100] mb-[15px] flex items-center gap-[15px]">
             📚 Holds Ready for Pickup
