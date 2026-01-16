@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "CommonJS",
+    "esModuleInterop": true,         /* Fixes the error */
+    "allowSyntheticDefaultImports": true, /* Allows default imports */
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}

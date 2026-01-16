@@ -1,0 +1,19 @@
+# Ignore dependency folders in any directory
+node_modules/
+
+# Ignore the Vite cache folder
+.vite/
+
+# Ignore build/output folders
+dist/
+build/
+out/
+
+# Ignore environment variables (very important for security)
+.env
+*.env.local
+*.env.development.local
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
