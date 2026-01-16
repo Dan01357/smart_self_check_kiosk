@@ -12,7 +12,6 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   // 2. Logic to determine where to go after login (defaults to /home)
-  const from = location.state?.from?.pathname || "/home";
 
   const handleShowScanner = () => {
     setShowScanner(true)
@@ -23,8 +22,8 @@ const LoginPage = () => {
     openKeyboard(async (cardNumber) => {
       try {
         const response = await postDataLogin(String(cardNumber));
- 
-if (response.success === "true") {
+
+        if (response.success === "true") {
           // Update Global State
           setPatronId(response.patron_id);
           setAuthorized(true);
@@ -38,7 +37,10 @@ if (response.success === "true") {
           });
 
           // Redirect
-          navigate(from, { replace: true });
+          navigate("/checkout", {
+            replace: true,
+            state: location.state // This preserves the 'from' path for your tracing
+          });
         } else {
           Swal.fire({
             title: 'Invalid Credentials!',
@@ -66,16 +68,16 @@ if (response.success === "true") {
 
           <div className='flex flex-col gap-10 items-center'>
             {/* Library Card Button */}
-            
+
             {/* QR Code Button */}
             <button className="flex flex-col items-center rounded-[20px] border border-[#ecf0f1] border-[3px] hover:border-[#3498db] hover:shadow-[0_10px_30px_rgba(0,0,0,0.1)] hover:-translate-y-0.5 transition-all duration-300 w-150 p-[50px]" onClick={handleShowScanner}>
               <div className='text-[100px]'>📱</div>
               <div className='font-bold text-[32px]'>Scan QR Code</div>
               <div className='text-[24px] text-[#7f8c8d]'>Show your mobile library app QR code</div>
             </button>
-             {/* Manual Entry Button (Updated to call handleManualEntry) */}
-            <button 
-              className="flex flex-col items-center rounded-[20px] border border-[#ecf0f1] border-[3px] hover:border-[#3498db] hover:shadow-[0_10px_30px_rgba(0,0,0,0.1)] hover:-translate-y-0.5 transition-all duration-300 w-150 p-[50px]" 
+            {/* Manual Entry Button (Updated to call handleManualEntry) */}
+            <button
+              className="flex flex-col items-center rounded-[20px] border border-[#ecf0f1] border-[3px] hover:border-[#3498db] hover:shadow-[0_10px_30px_rgba(0,0,0,0.1)] hover:-translate-y-0.5 transition-all duration-300 w-150 p-[50px]"
               onClick={handleManualEntry}
             >
               <div className='text-[100px]'>🔢</div>
@@ -85,9 +87,9 @@ if (response.success === "true") {
           </div>
         </div>
         {/* Info Box */}
-        
+
         {showScanner
-        && <SimpleScanner /> }
+          && <SimpleScanner />}
         <div className='bg-[#e3f2fd] p-[30px] rounded-[15px] m-[25px]'>
           <div className='text-[30px] font-bold text-[#1565c0] mb-[20px]'>
             💡 First time using self-checkout?

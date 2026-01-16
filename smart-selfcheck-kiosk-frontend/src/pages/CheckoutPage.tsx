@@ -49,7 +49,6 @@ const CheckoutPage = () => {
   const handleRFIDScanner = () => {
     openKeyboard(async (barcodeValue) => {
       // Find the item in our local state to get the item_id
-      console.log(barcodeValue, "bcValue", typeof barcodeValue)
       const itemData: any = items.find((item: any) => barcodeValue === item.external_id);
 
       if (itemData) {
