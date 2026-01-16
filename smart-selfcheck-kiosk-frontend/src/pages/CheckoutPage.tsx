@@ -8,6 +8,7 @@ import Lottie from "lottie-react"
 import animationData from "../assets/Scanning Document.json"
 import { formatDate } from '../utils/formatDate';
 import { api } from '../../app';
+import SimpleScanner from '../components/common/TestQrResult';
 
 const CheckoutPage = () => {
   const { 
@@ -48,6 +49,7 @@ const CheckoutPage = () => {
   const handleRFIDScanner = () => {
     openKeyboard(async (barcodeValue) => {
       // Find the item in our local state to get the item_id
+      console.log(barcodeValue, "bcValue", typeof barcodeValue)
       const itemData: any = items.find((item: any) => barcodeValue === item.external_id);
 
       if (itemData) {
@@ -116,7 +118,7 @@ const CheckoutPage = () => {
       <div className='pt-60 pb-30'>
         <div className="m-auto flex flex-col justify-center items-center overflow-auto">
           <div className="text-[42px] mb-[35px] font-[700]">Place Items on RFID Reader</div>
-
+          <SimpleScanner />
           <div className="flex flex-col bg-gradient-to-br from-[rgb(30_58_95)] to-[rgb(44_95_158)] py-[50px] px-[200px] items-center rounded-[25px] border border-dashed border-[5px] border-[rgb(52_152_219)] m-[30px] overflow-hidden min-h-[400px] w-[1000px] cursor-pointer"
             onClick={handleRFIDScanner}
           >

@@ -61,7 +61,7 @@ if (response.success === "true") {
     <div className='max-w-[1080px] min-h-[1920px] m-auto border-x border-x-solid border-x-gray-700'>
       <Header />
       <div className='max-w-420 m-auto pt-60 pb-30'>
-        <div className="flex flex-col justify-center items-center py-45">
+        <div className="flex flex-col justify-center items-center py-47">
           <div className="text-[40px] font-[700] pb-5">Please Identify Yourself</div>
 
           <div className='flex flex-col gap-10 items-center'>
