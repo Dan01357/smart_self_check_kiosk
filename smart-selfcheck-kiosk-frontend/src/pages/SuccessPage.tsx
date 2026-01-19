@@ -154,7 +154,7 @@ const SuccessPage = () => {
               {displayCheckins && displayCheckins.length > 0 ? displayCheckins.map((displayCheckin, index) => {
                 return (
                   <div key={index} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[rgb(46_204_113)] border-l-[5px]'>
-                    <div className='text-[50px] min-w-[50px] mr-5'>📘
+                    <div className='text-[50px] min-w-[50px] mr-5'>{displayCheckin.isOverdue ? '📕' : '📘'}
                     </div>
                     <div>
                       <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{displayCheckin.title}</div>

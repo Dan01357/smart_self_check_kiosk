@@ -15,7 +15,7 @@ const KOHA_URL = "http://192.168.0.149:8080/api/v1";
 const KOHA_USER = "administrator";
 const KOHA_PASS = "Zxcqwe123$";
 
-const KOHA_IP_SIP2 = '192.168.0.149'; 
+const KOHA_IP_SIP2 = '192.168.0.149';
 const KOHA_PORT_SIP2 = 6001;
 
 const token = Buffer.from(`${KOHA_USER}:${KOHA_PASS}`).toString('base64');
@@ -57,7 +57,7 @@ function sendSipMessage(message) {
         client.on('data', (data) => {
             responseData += data.toString();
             console.log("Buffer contains:", responseData);
-            
+
             // Check if the buffer contains a message starting with '10' (Checkin Response)
             // We split by \r because Koha sends multiple messages
             const lines = responseData.split(/[\r\n]+/);
@@ -86,15 +86,39 @@ function sendSipMessage(message) {
 // HTTP Endpoint for React
 app.post('/api/checkin', async (req, res) => {
     const { barcode } = req.body;
-    const sipDate = getSipTimestamp();
-    const checkinMsg = `09N${sipDate}${sipDate}|APMARAWI|AOMARAWI|AB${barcode}|`;
 
     try {
+        // 1. Find the item ID first using the barcode
+        const items = await safeKohaGet(`/items?external_id=${barcode}`);
+        const item = items[0];
+
+        let isOverdue = false;
+
+        if (item) {
+            // 2. Look for an active checkout for this item
+            const checkouts = await safeKohaGet(`/checkouts?item_id=${item.item_id}`);
+            if (checkouts.length > 0) {
+                const dueDate = new Date(checkouts[0].due_date);
+                const now = new Date();
+                // 3. Compare dates manually
+                isOverdue = dueDate < now;
+            }
+        }
+
+        // 4. Proceed with the SIP2 Checkin
+        const sipDate = getSipTimestamp();
+        const checkinMsg = `09N${sipDate}${sipDate}|APMARAWI|AOMARAWI|AB${barcode}|`;
         const result = await sendSipMessage(checkinMsg);
-        // If the result starts with '10' and the 3rd character is '1', it is success
-        const success = result.includes('101'); 
-        res.json({ success, raw: result });
+        
+        const success = result.substring(0, 3) === '101';
+        
+        res.json({
+            success,
+            raw: result,
+            isOverdue: isOverdue // This is now calculated accurately from the DB
+        });
     } catch (error) {
+        console.error("Checkin Error:", error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -162,7 +186,7 @@ app.post("/api/v1/checkouts", async (req, res) => {
 
     } catch (error) {
         console.error('KOHA API CHECKOUT ERROR:', error.response?.data || error.message);
-        
+
         // Send specific library error back to UI (e.g. "Book already out")
         const errorMessage = error.response?.data?.error || "Koha API Error";
         res.status(error.response?.status || 500).json({ error: errorMessage });
