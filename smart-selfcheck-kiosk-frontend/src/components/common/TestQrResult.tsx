@@ -64,7 +64,13 @@ function SimpleScanner() {
   const handleCheckoutLogic = useCallback(async (barcodeValue: string) => {
     const itemData: any = items.find((item: any) => barcodeValue === item.external_id);
     if (!itemData) {
-      return Swal.fire({ title: 'Not Found', text: 'Barcode not found.', icon: 'warning' });
+      return Swal.fire({ 
+        title: 'Not Found', 
+        text: 'The barcode scanned was not found in the system.', 
+        icon: 'warning',
+        allowEnterKey: false,
+        confirmButtonText: 'OK'
+      });
     }
 
     Swal.showLoading();
@@ -84,14 +90,25 @@ function SimpleScanner() {
       };
 
       setDisplayCheckouts((prev: any) => [newSessionItem, ...prev]);
-      Swal.fire({ title: 'Success!', text: `Checked out. Due: ${formatDate(result.due_date)}`, icon: 'success', timer: 2000, showConfirmButton: false });
+      Swal.fire({ title: 'Success!', text: `Checked out. Due: ${formatDate(result.due_date)}`, icon: 'success', timer: 2000, showConfirmButton: false, allowEnterKey: false });
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.message || "Failed to checkout";
-      Swal.fire({ title: 'Error', text: errorMessage === "Confirmation error" ? "Already Checked Out" : errorMessage, icon: 'error' });
+      Swal.fire({ title: 'Error', text: errorMessage === "Confirmation error" ? "Book already Checked Out" : errorMessage, icon: 'error', allowEnterKey: false });
     }
   }, [items, biblios, patronId]);
 
   const handleCheckinLogic = useCallback(async (barcodeValue: string) => {
+    const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
+    if (!itemData) {
+      return Swal.fire({ 
+        title: 'Not Found', 
+        text: 'The barcode scanned was not found in the system.', 
+        icon: 'warning',
+        allowEnterKey: false,
+        confirmButtonText: 'OK'
+      });
+    }
+
     Swal.showLoading();
     try {
       const response = await fetch(`${API_BASE}/api/checkin`, {
@@ -102,7 +119,6 @@ function SimpleScanner() {
       const data = await response.json();
 
       if (data.success) {
-        const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
         const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
         const newReturn = {
           title: biblio?.title || "Unknown Title",
@@ -110,19 +126,27 @@ function SimpleScanner() {
           isOverdue: data.raw.toLowerCase().includes('overdue'),
         };
         setDisplayCheckins((prev: any) => [newReturn, ...prev]);
-        Swal.fire({ title: 'Success!', text: 'Returned successfully', icon: 'success', timer: 2000, showConfirmButton: false });
+        Swal.fire({ title: 'Success!', text: 'Returned successfully', icon: 'success', timer: 2000, showConfirmButton: false, allowEnterKey: false });
+      } else {
+        Swal.fire({
+          title: 'Check-in Error',
+          text: 'This book is not currently checked out.',
+          icon: 'error',
+          allowEnterKey: false
+        });
       }
     } catch (err) {
-      Swal.fire({ title: 'Error', text: 'Connection failed', icon: 'error' });
+      Swal.fire({ title: 'Error', text: 'Connection failed', icon: 'error', allowEnterKey: false });
     }
-  }, [items, biblios]);
+  }, [items, biblios, API_BASE]);
 
   // --- Hardware Event Listener ---
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
-        if (scanBuffer.current.length > 0) {
-          const code = scanBuffer.current;
+        e.preventDefault(); // Prevents scanner's "Enter" from closing active alerts
+        if (scanBuffer.current.trim().length > 0) {
+          const code = scanBuffer.current.trim();
           if (currentLocation === '/') handleLogin(code);
           else if (currentLocation === '/checkout') handleCheckoutLogic(code);
           else if (currentLocation === '/checkin') handleCheckinLogic(code);
