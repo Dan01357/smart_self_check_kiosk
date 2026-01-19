@@ -14,7 +14,7 @@ function SimpleScanner() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.172:4040";
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
 
   const curentLocation = location.pathname
   

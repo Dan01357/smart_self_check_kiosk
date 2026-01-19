@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import net from "net"
 import axios from "axios";
 import 'dotenv/config';
 
@@ -14,6 +15,9 @@ const KOHA_URL = "http://192.168.0.149:8080/api/v1";
 const KOHA_USER = "administrator";
 const KOHA_PASS = "Zxcqwe123$";
 
+const KOHA_IP_SIP2 = '192.168.0.149'; 
+const KOHA_PORT_SIP2 = 6001;
+
 const token = Buffer.from(`${KOHA_USER}:${KOHA_PASS}`).toString('base64');
 const authHeader = {
     'Accept': 'application/json',
@@ -24,6 +28,76 @@ const authHeader = {
 console.log("-----------------------------------------");
 console.log(`Backend targeting Koha at: ${KOHA_URL}`);
 console.log("-----------------------------------------");
+
+function getSipTimestamp() {
+    const now = new Date();
+    const Y = now.getFullYear();
+    const M = String(now.getMonth() + 1).padStart(2, '0');
+    const D = String(now.getDate()).padStart(2, '0');
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    const s = String(now.getSeconds()).padStart(2, '0');
+    // SIP2 format: YYYYMMDD    HHMMSS (4 spaces between)
+    return `${Y}${M}${D}    ${h}${m}${s}`;
+}
+
+// Function to talk to SIP2
+// --- SIP2 FUNCTION ---
+function sendSipMessage(message) {
+    return new Promise((resolve, reject) => {
+        const client = new net.Socket();
+        let responseData = '';
+
+        client.connect(KOHA_PORT_SIP2, KOHA_IP_SIP2, () => {
+            console.log("Connected to SIP2. Sending Login + Checkin...");
+            const login = "9300CNsip_username|COSip2pass|CPMARAWI|\r";
+            client.write(login + message + "\r");
+        });
+
+        client.on('data', (data) => {
+            responseData += data.toString();
+            console.log("Buffer contains:", responseData);
+            
+            // Check if the buffer contains a message starting with '10' (Checkin Response)
+            // We split by \r because Koha sends multiple messages
+            const lines = responseData.split(/[\r\n]+/);
+            const checkinResponse = lines.find(line => line.startsWith('10'));
+
+            if (checkinResponse) {
+                console.log("Found Checkin Response:", checkinResponse);
+                client.destroy();
+                resolve(checkinResponse); // Send only the 101... part back
+            }
+        });
+
+        client.on('error', (err) => {
+            client.destroy();
+            reject(err);
+        });
+
+        // Increased timeout to 10 seconds because Zebra indexing can be slow
+        client.setTimeout(10000, () => {
+            client.destroy();
+            reject(new Error("Koha SIP2 Timeout - But check Koha, it might have worked!"));
+        });
+    });
+}
+
+// HTTP Endpoint for React
+app.post('/api/checkin', async (req, res) => {
+    const { barcode } = req.body;
+    const sipDate = getSipTimestamp();
+    const checkinMsg = `09N${sipDate}${sipDate}|APMARAWI|AOMARAWI|AB${barcode}|`;
+
+    try {
+        const result = await sendSipMessage(checkinMsg);
+        // If the result starts with '10' and the 3rd character is '1', it is success
+        const success = result.startsWith('101'); 
+        res.json({ success, raw: result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
 
 // --- REUSABLE SAFE FETCH FUNCTION ---
 async function safeKohaGet(endpoint) {
@@ -117,3 +191,4 @@ app.get("/api/v1/items", async (req, res) => {
 app.listen(4040, "0.0.0.0", () => {
     console.log("SUCCESS: Backend Server listening on port 4040...");
 });
+
