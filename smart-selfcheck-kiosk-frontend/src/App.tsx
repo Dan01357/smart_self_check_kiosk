@@ -9,14 +9,13 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import KeyboardPad from "./components/common/KeyboardPad";
 import MyQRCode from "./pages/Qr";
-import CheckinComponent from "./pages/TestPageSip2";
 
 function App() {
   return (
     <>
       <Routes>
         {/* Public Route */}
-         <Route path="/checkin" element={<CheckinComponent />} />
+         {/* <Route path="/checkin" element={<CheckinComponent />} /> */}
         <Route path="/" element={<LoginPage />} />
         <Route path="/qr" element={<MyQRCode />}/>
         {/* Protected Routes (Wrapper) */}

@@ -1,4 +1,5 @@
-import  { useState } from 'react';
+import { useState } from 'react';
+import Swal from 'sweetalert2';
 
 function CheckinComponent() {
   const [barcode, setBarcode] = useState('');
@@ -6,7 +7,7 @@ function CheckinComponent() {
 
   const handleCheckin = async () => {
     setStatus('Processing...');
-    
+
     try {
       const response = await fetch('http://192.168.0.127:4040/api/checkin', {
         method: 'POST',
@@ -17,9 +18,19 @@ function CheckinComponent() {
       const data = await response.json();
 
       if (data.success) {
-        setStatus(`✅ Success! Item ${barcode} returned.`);
+        Swal.fire({
+          title: 'Success!',
+           text: 'Returning book successful',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
+        });
       } else {
-        setStatus(`❌ Failed: ${data.error || 'Check Koha logs'}`);
+        Swal.fire({
+          title: 'Not Found',
+          text: 'The barcode scanned was not found in the system.',
+          icon: 'warning'
+        });
       }
     } catch (err) {
       setStatus('❌ Error: Could not connect to Proxy');
@@ -29,11 +40,11 @@ function CheckinComponent() {
   return (
     <div style={{ padding: '20px' }}>
       <h2>Koha SIP2 Check-in</h2>
-      <input 
-        type="text" 
-        placeholder="Scan Barcode" 
-        value={barcode} 
-        onChange={(e) => setBarcode(e.target.value)} 
+      <input
+        type="text"
+        placeholder="Scan Barcode"
+        value={barcode}
+        onChange={(e) => setBarcode(e.target.value)}
       />
       <button onClick={handleCheckin}>Return Book</button>
       <p>{status}</p>
