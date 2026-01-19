@@ -92,7 +92,7 @@ app.post('/api/checkin', async (req, res) => {
     try {
         const result = await sendSipMessage(checkinMsg);
         // If the result starts with '10' and the 3rd character is '1', it is success
-        const success = result.startsWith('101'); 
+        const success = result.includes('101'); 
         res.json({ success, raw: result });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });

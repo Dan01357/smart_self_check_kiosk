@@ -10,14 +10,14 @@ import { formatDate } from '../../utils/formatDate';
 
 function SimpleScanner() {
   const scanBuffer = useRef("");
-  const { setAuthorized, setPatronId, setShowScanner, patronId, setItems, items, setCheckouts, biblios, setBiblios, setDisplayCheckouts } = useKiosk();
+  const { setAuthorized, setPatronId, setShowScanner, patronId, setItems, items, setCheckouts, biblios, setBiblios, setDisplayCheckouts, setDisplayCheckins } = useKiosk();
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
 
   const curentLocation = location.pathname
-  
+
   if (curentLocation === '/') {
 
     const handleShowScanner = () => {
@@ -29,7 +29,7 @@ function SimpleScanner() {
         if (e.key === 'Enter') {
           if (scanBuffer.current.length > 0) {
             const cardNumber = scanBuffer.current
-          
+
             try {
               const response = await postDataLogin(String(cardNumber));
 
@@ -45,11 +45,11 @@ function SimpleScanner() {
                   showConfirmButton: false
                 });
 
-                navigate("/checkout", { 
-                  replace: true, 
-                  state: location.state 
+                navigate("/checkout", {
+                  replace: true,
+                  state: location.state
                 });
-                
+
               } else {
                 Swal.fire({
                   title: 'Invalid Credentials!',
@@ -123,10 +123,10 @@ function SimpleScanner() {
         if (e.key === 'Enter') {
           if (scanBuffer.current.length > 0) {
             const barcodeValue = scanBuffer.current;
-            
+
             // Logic Change: Finding item in the updated 'items' state
             const itemData: any = items.find((item: any) => barcodeValue === item.external_id);
-            
+
             if (itemData) {
               Swal.showLoading();
               try {
@@ -194,7 +194,88 @@ function SimpleScanner() {
         window.removeEventListener('keydown', handleKeyDown);
       };
       // LOGIC CHANGE: Added dependencies so the listener updates when data is fetched
-    }, [items, biblios, patronId]); 
+    }, [items, biblios, patronId]);
+
+    return null;
+  }
+  else if (curentLocation === "/checkin") {
+    // 1. Fetch metadata on mount for title lookups
+    useEffect(() => {
+      const fetchMetadata = async () => {
+        try {
+          const [bibliosRes, itemsRes] = await Promise.all([
+            api.get(`${API_BASE}/api/v1/biblios`),
+            api.get(`${API_BASE}/api/v1/items`)
+          ]);
+          setBiblios(bibliosRes.data);
+          setItems(itemsRes.data);
+        } catch (e) {
+          console.error("Metadata fetch failed", e);
+        }
+      };
+      fetchMetadata();
+    }, [API_BASE]);
+
+    // 2. Hardware Listener for Check-in
+    useEffect(() => {
+      const handleKeyDown = async (e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+          if (scanBuffer.current.length > 0) {
+            const barcodeValue = scanBuffer.current;
+            Swal.showLoading();
+
+            try {
+              // Call the SIP2 Backend
+              const response = await fetch(`${API_BASE}/api/checkin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ barcode: barcodeValue })
+              });
+
+              const data = await response.json();
+
+              if (data.success) {
+                // Find metadata to show Title
+                const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
+                const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
+
+                const newReturn = {
+                  title: biblio?.title || "Unknown Title",
+                  barcode: barcodeValue,
+                  isOverdue: data.raw.toLowerCase().includes('overdue'),
+                };
+
+                // Update the global state for the list
+                setDisplayCheckins((prev: any) => [newReturn, ...prev]);
+
+                Swal.fire({
+                  title: 'Success!',
+                  text: 'Returning book successful',
+                  icon: 'success',
+                  timer: 2000,
+                  showConfirmButton: false
+                });
+              } else {
+                // Swal.fire({
+                //   title: 'Not Found',
+                //   text: 'The barcode scanned was not found or not checked out.',
+                //   icon: 'warning'
+                // });
+              }
+            } catch (err) {
+              console.error(err);
+              Swal.fire({ title: 'Error', text: 'Connection failed', icon: 'error' });
+            }
+            scanBuffer.current = "";
+          }
+        } else if (e.key.length === 1) {
+          scanBuffer.current += e.key;
+        }
+      };
+
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [items, biblios, setDisplayCheckins]);
 
     return null;
   }
