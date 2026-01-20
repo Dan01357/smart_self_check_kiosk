@@ -13,6 +13,13 @@ const SuccessPage = () => {
   // Retrieve the previous location from the router state
   const locationBefore = location.state?.from;
 
+  // const myArray = [0,1,2,3]
+  // console.log(myArray.reduce((item,current)=>item+current, 0))
+  const overdueCount = displayCheckins.reduce((count, item) => {
+    return item.isOverdue === true ? count + 1 : count;
+  }, 0);
+  const notOverdueCount = displayCheckins.length - overdueCount
+
   const handlePrint = () => {
     // We navigate and clear state after a short delay to allow the animation to finish
     // without crashing the current view.
@@ -134,12 +141,20 @@ const SuccessPage = () => {
             <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30  text-[26px]'>
               <span>On Time:</span>
               {/* FIXED: Added optional chaining and fallback text to prevent crash */}
-              <span>1 item</span>
+              <span>
+                {notOverdueCount > 1
+                  ? `${notOverdueCount} items`
+                  : `${notOverdueCount} item`}
+              </span>
             </div>
             <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
               <span>Overdue:</span>
               {/* FIXED: Added optional chaining and fallback text to prevent crash */}
-              <span>1 item</span>
+              <span>
+                {overdueCount > 1
+                  ? `${overdueCount} items`
+                  : `${overdueCount} item`}
+              </span>
             </div>
             <div className='text-[34px] font-bold mt-[15px] pt-[25px] border-t border-t-[3px] border-t-solid border-t-white/50 flex justify-between'>
               <span>Late Fees:</span>

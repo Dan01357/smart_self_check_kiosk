@@ -30,8 +30,6 @@ const CheckinPage = () => {
           </div>
           <div className='flex flex-col gap-5'>
             {displayCheckins.map((item: any, index: number) => {
-
-
               return (
                 <div key={index} className={`flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[5px] ${item.isOverdue ? 'border-l-[#e74c3c]' : 'border-l-[rgb(46_204_113)]'}`}>
                   <div className='text-[50px] min-w-[50px] mr-5'>{item.isOverdue ? '📕' : '📘'}</div>
