@@ -54,7 +54,11 @@ const CheckoutPage = () => {
           </div>
         </div>
         <div className='bg-[rgb(236_240_241)] m-[30px] p-[30px] rounded-[15px]'>
-          <div className='font-bold text-[rgb(44_62_80)] flex items-center justify-between mb-4'><div className='text-[32px]'>Items Scanned ({displayCheckouts.length})</div></div>
+          <div className='font-bold text-[rgb(44_62_80)] flex items-center justify-between mb-4 fy-between'>
+            <div className='text-[32px]'>Items Scanned ({displayCheckouts.length})
+            </div>
+            <div className='text-white bg-[#3498db] py-[8px] px-[20px] rounded-[20px] text-[24px]'> {(displayCheckouts.length === 0 || displayCheckouts.length === 1 ) ? `${displayCheckouts.length} Item` : `${displayCheckouts.length} Items`} </div>
+          </div>
           <div className='flex flex-col gap-5'>
             {displayCheckouts.map((item: any, index: number) => (
               <div key={index} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[rgb(46_204_113)] border-l-[5px]'>
@@ -69,6 +73,7 @@ const CheckoutPage = () => {
             ))}
           </div>
         </div>
+
       </div>
       <Footer />
     </div>

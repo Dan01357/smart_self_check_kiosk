@@ -3,6 +3,8 @@ import Footer from '../components/common/Footer'
 import Swal from 'sweetalert2';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useKiosk } from '../context/KioskContext';
+import { formatDate } from '../utils/formatDate';
+import { diffInDays } from '../utils/dueDateFormulate';
 
 const SuccessPage = () => {
   const navigate = useNavigate();
@@ -152,14 +154,22 @@ const SuccessPage = () => {
               {/* books here */}
 
               {displayCheckins && displayCheckins.length > 0 ? displayCheckins.map((displayCheckin, index) => {
+                const now = new Date()
+
                 return (
                   <div key={index} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[rgb(46_204_113)] border-l-[5px]'>
                     <div className='text-[50px] min-w-[50px] mr-5'>{displayCheckin.isOverdue ? '📕' : '📘'}
                     </div>
                     <div>
                       <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{displayCheckin.title}</div>
-                      <div className='text-[20px] text-[rgb(127_140_141)]'>Returned on: Jan 15, 2026 </div>
-                      <div className='text-[#2ecc71] text-[22px] font-bold'>On Time</div>
+                      <div className='text-[20px] text-[rgb(127_140_141)]'>Returned on: {formatDate(now)} </div>
+                      {displayCheckin.isOverdue ? <div className='text-[#e74c3c] text-[22px] font-bold'>
+                        {diffInDays(displayCheckin)>0 ? `${diffInDays(displayCheckin)} days late`: `1 day late`} 
+                        
+                      </div> : <div className='text-[#2ecc71] text-[22px] font-bold'>
+                        On Time
+                      </div>}
+
                     </div>
                   </div>
                 );

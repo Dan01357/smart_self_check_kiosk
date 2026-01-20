@@ -30,7 +30,7 @@ function SimpleScanner() {
             api.get(`${API_BASE}/api/v1/biblios`),
             api.get(`${API_BASE}/api/v1/items`)
           ];
-          if (currentLocation === "/checkout") endpoints.push(api.get(`${API_BASE}/api/v1/checkouts`));
+          if (currentLocation === "/checkout" || currentLocation === "/checkin") endpoints.push(api.get(`${API_BASE}/api/v1/checkouts`));
           
           const [bibliosRes, itemsRes, checkoutsRes] = await Promise.all(endpoints);
           setBiblios(bibliosRes.data);
@@ -97,8 +97,10 @@ function SimpleScanner() {
     }
   }, [items, biblios, patronId]);
 
+  
   const handleCheckinLogic = useCallback(async (barcodeValue: string) => {
   const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
+  
   
   if (!itemData) {
     return Swal.fire({ 
@@ -116,7 +118,8 @@ function SimpleScanner() {
   const isActuallyOverdue = currentCheckout 
     ? new Date(currentCheckout.due_date) < new Date() 
     : false;
-
+  
+    console.log(currentCheckout)
   Swal.showLoading();
   try {
     const response = await fetch(`${API_BASE}/api/checkin`, {
@@ -125,13 +128,16 @@ function SimpleScanner() {
       body: JSON.stringify({ barcode: barcodeValue })
     });
     const data = await response.json();
-
+    console.log(data, "hello")
     if (data.success) {
       const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
+
       const newReturn = {
         title: biblio?.title || "Unknown Title",
         barcode: barcodeValue,
-        isOverdue: isActuallyOverdue || data.isOverdue, // Combine frontend check with backend response
+        isOverdue: isActuallyOverdue || data.isOverdue, 
+        dueDate: currentCheckout.due_date
+        // Combine frontend check with backend response
       };
 
       console.log(newReturn)
