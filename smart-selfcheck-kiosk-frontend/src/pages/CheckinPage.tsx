@@ -30,7 +30,7 @@ const CheckinPage = () => {
           </div>
           <div className='flex flex-col gap-5'>
             {displayCheckins.map((item: any, index: number) => {
-            
+
 
               return (
                 <div key={index} className={`flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[5px] ${item.isOverdue ? 'border-l-[#e74c3c]' : 'border-l-[rgb(46_204_113)]'}`}>
@@ -38,7 +38,12 @@ const CheckinPage = () => {
                   <div>
                     <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{item.title}</div>
                     <div className='text-[20px] text-[rgb(127_140_141)]'>Barcode: {item.barcode}</div>
-                    <div className='text-[20px] text-[rgb(127_140_141)]'>{item.isOverdue ? `${diffInDays(item) > 0 ? `${diffInDays(item)} days overdue` : `1 day overdue`} ` : 'Returned on time'}</div>
+                    <div className='text-[20px] text-[rgb(127_140_141)]'>{item.isOverdue
+                      ? `${diffInDays(item) === 0 || diffInDays(item) === 1
+                        ? `1 day overdue`
+                        : `${diffInDays(item)} days overdue`} `
+                      : 'Returned on time'
+                    }</div>
                   </div>
                   <div className='text-[rgb(46_204_113)] ml-auto'>{item.isOverdue ? '⚠️' : '✓'}</div>
                 </div>

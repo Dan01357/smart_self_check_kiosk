@@ -164,8 +164,10 @@ const SuccessPage = () => {
                       <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{displayCheckin.title}</div>
                       <div className='text-[20px] text-[rgb(127_140_141)]'>Returned on: {formatDate(now)} </div>
                       {displayCheckin.isOverdue ? <div className='text-[#e74c3c] text-[22px] font-bold'>
-                        {diffInDays(displayCheckin)>0 ? `${diffInDays(displayCheckin)} days late`: `1 day late`} 
-                        
+                        {diffInDays(displayCheckin) === 0 || diffInDays(displayCheckin) === 1
+                          ? `1 day late`
+                          : `${diffInDays(displayCheckin)} days late`}
+
                       </div> : <div className='text-[#2ecc71] text-[22px] font-bold'>
                         On Time
                       </div>}
