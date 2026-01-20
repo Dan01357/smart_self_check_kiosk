@@ -4,6 +4,7 @@ import { useKiosk } from '../context/KioskContext'
 import { useEffect } from 'react'
 import axios from 'axios'
 import { formatDate } from '../utils/formatDate'
+import { diffInDaysAccountPage } from '../utils/dueDateFormulate'
 
 const AccountPage = () => {
 
@@ -14,7 +15,7 @@ const AccountPage = () => {
   useEffect(() => {
     const fetchCheckouts = async () => {
       try {
-        
+
         const response = await axios.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`);
         console.log(response.data)
         setCheckouts(response.data);
@@ -37,7 +38,7 @@ const AccountPage = () => {
     fetchBiblios();
     fetchItems();
   }, []);
-  
+
 
 
   return (
@@ -74,6 +75,7 @@ const AccountPage = () => {
           </div>
           <div className='flex flex-col gap-5'>
             {checkouts.map((checkout: any) => {
+
               return (
                 <div key={checkout.checkout_id} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[rgb(46_204_113)] border-l-[5px]'>
                   <div className='text-[50px] min-w-[50px] mr-5'>📘</div>
@@ -87,7 +89,19 @@ const AccountPage = () => {
                     </div>
                     <div className='text-[20px] text-[rgb(127_140_141)]'>Due: {formatDate(checkout.due_date)
                     } </div>
-                    <div className='text-[#2ecc71] text-[22px] font-bold'>14 days left</div>
+                    {/* <div className='text-[#2ecc71] text-[22px] font-bold'>
+                      
+                    </div> */}
+                    {diffInDaysAccountPage(checkout) > 0
+                      ? <div className='text-[#2ecc71] text-[22px] font-bold'>
+                        {`${diffInDaysAccountPage(checkout)} days left`}
+                      </div>
+                      : <div className='text-[#e74c3c] text-[22px] font-bold'>
+                        {`${Math.abs(diffInDaysAccountPage(checkout)) === 0 || Math.abs(diffInDaysAccountPage(checkout)) ===1 
+                          ? '1 day overdue'
+                          : `${Math.abs(diffInDaysAccountPage(checkout))} days overdue`
+                        }`}
+                      </div>}
                   </div>
                   <div className='text-[rgb(46_204_113)] ml-auto'>✓</div>
                 </div>
@@ -100,7 +114,7 @@ const AccountPage = () => {
 
           </div>
         </div>
-        
+
         {/*Include this if there are holds*/}
         {/* <div className='bg-[#fff3e0] border-l-[5px] border-l-solid border-l-[#ff9800] rounded-[20px] p-[30px] my-[30px]'>
           <div className="text-[28px] font-bold text-[#e65100] mb-[15px] flex items-center gap-[15px]">

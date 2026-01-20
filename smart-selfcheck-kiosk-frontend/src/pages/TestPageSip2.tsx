@@ -9,7 +9,7 @@ function CheckinComponent() {
     setStatus('Processing...');
 
     try {
-      const response = await fetch('http://192.168.150:4040/api/checkin', {
+      const response = await fetch('http://192.168.149:4040/api/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ barcode: barcode })
