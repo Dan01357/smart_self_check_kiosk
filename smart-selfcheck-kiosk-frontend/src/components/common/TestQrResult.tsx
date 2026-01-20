@@ -10,11 +10,11 @@ import { formatDate } from '../../utils/formatDate';
 
 function SimpleScanner() {
   const scanBuffer = useRef("");
-  const { 
-  setAuthorized, setPatronId, setShowScanner, patronId, 
-  setItems, items, setCheckouts, checkouts, biblios, setBiblios, // added 'checkouts' here
-  setDisplayCheckouts, setDisplayCheckins 
-} = useKiosk();
+  const {
+    setAuthorized, setPatronId, setShowScanner, patronId,
+    setItems, items, setCheckouts, checkouts, biblios, setBiblios, // added 'checkouts' here
+    setDisplayCheckouts, setDisplayCheckins
+  } = useKiosk();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,8 +30,8 @@ function SimpleScanner() {
             api.get(`${API_BASE}/api/v1/biblios`),
             api.get(`${API_BASE}/api/v1/items`)
           ];
-          if (currentLocation === "/checkout" || currentLocation === "/checkin") endpoints.push(api.get(`${API_BASE}/api/v1/checkouts`));
-          
+          if (currentLocation === "/checkout" || currentLocation === "/checkin") endpoints.push(api.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`));
+
           const [bibliosRes, itemsRes, checkoutsRes] = await Promise.all(endpoints);
           setBiblios(bibliosRes.data);
           setItems(itemsRes.data);
@@ -64,9 +64,9 @@ function SimpleScanner() {
   const handleCheckoutLogic = useCallback(async (barcodeValue: string) => {
     const itemData: any = items.find((item: any) => barcodeValue === item.external_id);
     if (!itemData) {
-      return Swal.fire({ 
-        title: 'Not Found', 
-        text: 'The barcode scanned was not found in the system.', 
+      return Swal.fire({
+        title: 'Not Found',
+        text: 'The barcode scanned was not found in the system.',
         icon: 'warning',
         allowEnterKey: false,
         confirmButtonText: 'OK'
@@ -80,7 +80,7 @@ function SimpleScanner() {
 
       setCheckouts((prev: any) => [result, ...prev]);
       const biblio: any = biblios.find((b: any) => b.biblio_id === itemData.biblio_id);
-      
+
       const newSessionItem = {
         id: result.checkout_id,
         title: biblio?.title || "Unknown Title",
@@ -97,64 +97,64 @@ function SimpleScanner() {
     }
   }, [items, biblios, patronId]);
 
-  
+
   const handleCheckinLogic = useCallback(async (barcodeValue: string) => {
-  const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
-  
-  
-  if (!itemData) {
-    return Swal.fire({ 
-      title: 'Not Found', 
-      text: 'The barcode scanned was not found in the system.', 
-      icon: 'warning',
-      allowEnterKey: false,
-      confirmButtonText: 'OK'
-    });
-  }
+    const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
 
-  // --- LOGIC FOR OVERDUE CALCULATION ---
-  // Find the active checkout for this item before it is checked in
-  const currentCheckout = checkouts.find((c: any) => c.item_id === itemData.item_id);
-  const isActuallyOverdue = currentCheckout 
-    ? new Date(currentCheckout.due_date) < new Date() 
-    : false;
-  
-    console.log(currentCheckout)
-  Swal.showLoading();
-  try {
-    const response = await fetch(`${API_BASE}/api/checkin`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ barcode: barcodeValue })
-    });
-    const data = await response.json();
-    console.log(data, "hello")
-    if (data.success) {
-      const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
 
-      const newReturn = {
-        title: biblio?.title || "Unknown Title",
-        barcode: barcodeValue,
-        isOverdue: isActuallyOverdue || data.isOverdue, 
-        dueDate: currentCheckout.due_date
-        // Combine frontend check with backend response
-      };
-
-      console.log(newReturn)
-      setDisplayCheckins((prev: any) => [newReturn, ...prev]);
-      Swal.fire({ title: 'Success!', text: 'Returned successfully', icon: 'success', timer: 2000, showConfirmButton: false, allowEnterKey: false });
-    } else {
-      Swal.fire({
-        title: 'Check-in Error',
-        text: 'This book is not currently checked out.',
-        icon: 'error',
-        allowEnterKey: false
+    if (!itemData) {
+      return Swal.fire({
+        title: 'Not Found',
+        text: 'The barcode scanned was not found in the system.',
+        icon: 'warning',
+        allowEnterKey: false,
+        confirmButtonText: 'OK'
       });
     }
-  } catch (err) {
-    Swal.fire({ title: 'Error', text: 'Connection failed', icon: 'error', allowEnterKey: false });
-  }
-}, [items, biblios, checkouts, API_BASE]); // Added checkouts to dependency array
+
+    // --- LOGIC FOR OVERDUE CALCULATION ---
+    // Find the active checkout for this item before it is checked in
+    const currentCheckout = checkouts.find((c: any) => c.item_id === itemData.item_id);
+    const isActuallyOverdue = currentCheckout
+      ? new Date(currentCheckout.due_date) < new Date()
+      : false;
+
+    console.log(currentCheckout)
+    Swal.showLoading();
+    try {
+      const response = await fetch(`${API_BASE}/api/checkin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ barcode: barcodeValue })
+      });
+      const data = await response.json();
+      console.log(data, "hello")
+      if (data.success) {
+        const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
+
+        const newReturn = {
+          title: biblio?.title || "Unknown Title",
+          barcode: barcodeValue,
+          isOverdue: isActuallyOverdue || data.isOverdue,
+          dueDate: currentCheckout.due_date
+          // Combine frontend check with backend response
+        };
+
+        console.log(newReturn)
+        setDisplayCheckins((prev: any) => [newReturn, ...prev]);
+        Swal.fire({ title: 'Success!', text: 'Returned successfully', icon: 'success', timer: 2000, showConfirmButton: false, allowEnterKey: false });
+      } else {
+        Swal.fire({
+          title: 'Check-in Error',
+          text: 'This book is not currently checked out.',
+          icon: 'error',
+          allowEnterKey: false
+        });
+      }
+    } catch (err) {
+      Swal.fire({ title: 'Error', text: 'Connection failed', icon: 'error', allowEnterKey: false });
+    }
+  }, [items, biblios, checkouts, API_BASE]); // Added checkouts to dependency array
 
   // --- Hardware Event Listener ---
   useEffect(() => {

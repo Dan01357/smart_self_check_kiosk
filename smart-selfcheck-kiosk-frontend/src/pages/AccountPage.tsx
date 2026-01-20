@@ -7,14 +7,16 @@ import { formatDate } from '../utils/formatDate'
 
 const AccountPage = () => {
 
-  const { checkouts, setCheckouts, setBiblios, biblios, items, setItems } = useKiosk()
+  const { checkouts, setCheckouts, setBiblios, biblios, items, setItems, patronId } = useKiosk()
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   // 1. Fetch necessary data for lookups on mount
   useEffect(() => {
     const fetchCheckouts = async () => {
       try {
-        const response = await axios.get(`${API_BASE}/api/v1/checkouts`);
+        
+        const response = await axios.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`);
+        console.log(response.data)
         setCheckouts(response.data);
       } catch (e) { console.error("Checkout fetch failed", e); }
     }

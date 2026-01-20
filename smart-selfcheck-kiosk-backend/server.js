@@ -194,8 +194,10 @@ app.post("/api/v1/checkouts", async (req, res) => {
 });
 
 // 4. Get Checkouts (For UI History)
-app.get("/api/v1/checkouts", async (req, res) => {
-    const data = await safeKohaGet('/checkouts');
+app.get(`/api/v1/checkouts`, async (req, res) => {
+    const {patronId} = await req.query
+    console.log(patronId)
+    const data = await safeKohaGet(`/patrons/${patronId}/checkouts`);
     res.json(data);
 });
 
