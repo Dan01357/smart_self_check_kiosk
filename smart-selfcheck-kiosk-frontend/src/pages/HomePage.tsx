@@ -5,23 +5,23 @@ import { useKiosk } from "../context/KioskContext";
 import { useEffect } from "react";
 
 const HomePage = () => {
-  const {setDisplayCheckins, setDisplayCheckouts} = useKiosk()
+  const { setDisplayCheckins, setDisplayCheckouts } = useKiosk()
 
-  useEffect(()=>{
+  useEffect(() => {
     setDisplayCheckins([]);
     setDisplayCheckouts([]);
-  },[])
+  }, [])
   return (
     <div className='max-w-[1080px] min-h-[1920px] m-auto border-x border-x-solid border-x-gray-700'>
       {/* Prop 'locationBefore' removed - Header now uses internal logic */}
       <Header />
-      
+
       <div className="max-w-400 m-auto flex flex-col justify-center items-center pt-60 pb-30">
         <div className="text-[40px] font-[700] pb-10 flex flex-col items-center">
           <div>Welcome!</div>
           <div>What would you like to do?</div>
         </div>
-        
+
         <div className="flex flex-col gap-[25px]">
           <Link to="/checkout">
             <button className="bg-gradient-to-br from-[#667eea] to-[#764ba2] w-[900px] py-[60px] px-[40px] rounded-[20px] hover:-translate-y-[5px] hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)] transition-all duration-300">
@@ -50,19 +50,19 @@ const HomePage = () => {
               </div>
             </button>
           </Link>
-
-          <button className="bg-gradient-to-br from-[#667eea] to-[#764ba2] w-[900px] py-[60px] px-[40px] rounded-[20px] hover:-translate-y-[5px] hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)] transition-all duration-300">
-            <div className="flex items-center">
-              <div className="pr-5 text-white text-[40px]">
-                <div className="text-[80px]">🔄</div>
+          <Link to="/renew">
+            <button className="bg-gradient-to-br from-[#667eea] to-[#764ba2] w-[900px] py-[60px] px-[40px] rounded-[20px] hover:-translate-y-[5px] hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)] transition-all duration-300">
+              <div className="flex items-center">
+                <div className="pr-5 text-white text-[40px]">
+                  <div className="text-[80px]">🔄</div>
+                </div>
+                <div className="flex flex-col items-start">
+                  <div className="text-[35px] text-white font-bold">Renew Items</div>
+                  <div className="text-[22px] text-white">Extend your due dates</div>
+                </div>
               </div>
-              <div className="flex flex-col items-start">
-                <div className="text-[35px] text-white font-bold">Renew Items</div>
-                <div className="text-[22px] text-white">Extend your due dates</div>
-              </div>
-            </div>
-          </button>
-
+            </button>
+          </Link>
           <Link to="/account">
             <button className="bg-gradient-to-br from-[#667eea] to-[#764ba2] w-[900px] py-[60px] px-[40px] rounded-[20px] hover:-translate-y-[5px] hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)] transition-all duration-300">
               <div className="flex items-center">

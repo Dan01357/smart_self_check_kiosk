@@ -212,6 +212,36 @@ app.get("/api/v1/items", async (req, res) => {
     const data = await safeKohaGet('/items');
     res.json(data);
 });
+// --- RENEWAL ROUTE ---
+app.post("/api/v1/renew", async (req, res) => {
+    const { checkout_id } = req.body;
+
+    if (!checkout_id) {
+        return res.status(400).json({ error: "Missing checkout_id" });
+    }
+
+    try {
+        console.log(`Attempting renewal for Checkout ID: ${checkout_id}`);
+
+        // Koha API renewal endpoint: POST /checkouts/{checkout_id}/renewal
+        const response = await axios.post(
+            `${KOHA_URL}/checkouts/${checkout_id}/renewal`, 
+            {}, // Koha expects an empty body for this POST
+            { headers: authHeader }
+        );
+
+        // Success! Return the new checkout data (with the new due_date)
+        res.json(response.data);
+
+    } catch (error) {
+        console.error("KOHA RENEWAL ERROR:", error.response?.data || error.message);
+
+        // Forward the specific error from Koha
+        // Example: Koha might return "unrenewable_overdue" or "too_many_holds"
+        const kohaError = error.response?.data?.error || "Koha API Error";
+        res.status(error.response?.status || 500).json({ error: kohaError });
+    }
+});
 
 // --- START SERVER ---
 app.listen(4040, "0.0.0.0", () => {

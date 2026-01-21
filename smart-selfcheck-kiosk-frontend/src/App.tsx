@@ -9,6 +9,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import KeyboardPad from "./components/common/KeyboardPad";
 import MyQRCode from "./pages/Qr";
+import RenewItemsPage from "./pages/RenewItemsPage";
 // import Try from "./Try";
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
           <Route path="/success" element={<SuccessPage />} />
           <Route path="/checkin" element={<CheckinPage />} />
           <Route path="/account" element={<AccountPage />} />
+           <Route path="/renew" element={<RenewItemsPage />} />
         </Route>
 
         {/* 404 */}

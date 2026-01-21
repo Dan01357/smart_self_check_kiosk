@@ -149,6 +149,33 @@ const Footer = () => {
     }
   }
 
+  else if (path === '/renew') {
+    return (
+      <div className={wrapperClass}>
+        <Link to="/home">
+          <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={() => {
+            displayCheckouts.map(async (displayCheckout) => {
+              await fetch(`${API_BASE}/api/checkin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ barcode: displayCheckout.externalId })
+              });
+            })
+
+          }}>
+            <div className="mr-2">❌</div>
+            <div>Cancel</div>
+          </button>
+        </Link>
+        <Link to="/success" state={{ from: path }}>
+          <button className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300">
+            <div>✓ Complete Renewal</div>
+          </button>
+        </Link>
+      </div>
+    );
+  }
+
   return null;
 }
 

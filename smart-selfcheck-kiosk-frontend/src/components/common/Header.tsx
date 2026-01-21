@@ -130,6 +130,18 @@ const Header = () => {
     );
   }
 
+  if (path === '/renew') {
+    return (
+      <div className={wrapperClass}>
+        <div className="flex text-white justify-between">
+          <Logo title="Renewal Mode" />
+          <div className="flex">
+            <HelpBtn />
+          </div>
+        </div>
+      </div>
+    );
+  }
   return null;
 };
 
