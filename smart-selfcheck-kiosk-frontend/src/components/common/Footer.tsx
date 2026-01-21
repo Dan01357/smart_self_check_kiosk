@@ -1,10 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
 import { useKiosk } from "../../context/KioskContext";
+import { checkoutBook } from "../../services/kohaApi";
 
 const Footer = () => {
   const location = useLocation();
   const path = location.pathname;
-  const {setDisplayCheckouts, setDisplayCheckins} = useKiosk()
+  const { setDisplayCheckouts, setDisplayCheckins, displayCheckouts, displayCheckins, patronId, items } = useKiosk()
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
   // This replaces the locationBefore prop by reading the state passed during navigation
   const locationBefore = location.state?.from;
 
@@ -19,7 +21,7 @@ const Footer = () => {
       </div>
     );
   }
-  
+
   else if (path === '/') {
     return (
       <div className={wrapperClass}>
@@ -47,7 +49,7 @@ const Footer = () => {
           </button>
         </Link>
         <Link to="/checkout">
-          <button className="py-[15px] px-[35px] rounded-[8px] bg-[#16a085]"> 
+          <button className="py-[15px] px-[35px] rounded-[8px] bg-[#16a085]">
             <div>🔄 Renew All</div>
           </button>
         </Link>
@@ -59,7 +61,17 @@ const Footer = () => {
     return (
       <div className={wrapperClass}>
         <Link to="/home">
-          <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300">
+          <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={() => {
+            displayCheckouts.map(async (displayCheckout) => {
+              await fetch(`${API_BASE}/api/checkin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ barcode: displayCheckout.externalId })
+              });
+            })
+            setDisplayCheckouts([])
+
+          }}>
             <div className="mr-2">❌</div>
             <div>Cancel</div>
           </button>
@@ -77,7 +89,15 @@ const Footer = () => {
     return (
       <div className={wrapperClass}>
         <Link to="/home">
-          <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300">
+          <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={() => {
+            displayCheckins.map(async (displayCheckin) => {
+              const itemData: any = items.find((item: any) => displayCheckin.barcode === item.external_id);
+              
+              await checkoutBook(patronId, itemData.item_id);
+            })
+            setDisplayCheckins([])
+            console.log(displayCheckins)
+          }}>
             <div className="mr-2">❌</div>
             <div>Cancel</div>
           </button>
@@ -93,18 +113,13 @@ const Footer = () => {
 
   else if (path === '/success') {
     // Exact logic for handling where the user came from using navigation state
-    const handleResetDisplayCheckouts =() => {
-      setDisplayCheckouts([]);
-    }
-    const handleResetDisplayCheckins =() => {
-      setDisplayCheckins([]);
-    }
+
     if (locationBefore === '/checkout') {
-      
+
       return (
         <div className={wrapperClass}>
           <Link to="/home">
-            <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={handleResetDisplayCheckouts}>
+            <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={() => { setDisplayCheckouts([]); }}>
               <div className="mr-2">🏠</div>
               <div>Done</div>
             </button>
@@ -121,7 +136,7 @@ const Footer = () => {
       return (
         <div className={wrapperClass}>
           <Link to="/home">
-            <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={handleResetDisplayCheckins}>
+            <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={() => { setDisplayCheckins([]); }}>
               <div className="mr-2">🏠</div>
               <div>Done</div>
             </button>

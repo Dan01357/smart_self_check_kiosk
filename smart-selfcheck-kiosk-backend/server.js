@@ -86,7 +86,7 @@ function sendSipMessage(message) {
 // HTTP Endpoint for React
 app.post('/api/checkin', async (req, res) => {
     const { barcode } = req.body;
-
+    
     try {
         // 1. Find the item ID first using the barcode
         const items = await safeKohaGet(`/items?external_id=${barcode}`);
