@@ -9,7 +9,7 @@ import { diffInDays } from '../utils/dueDateFormulate';
 const SuccessPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { displayCheckouts, setDisplayCheckouts, setCheckouts, displayCheckins, setDisplayCheckins } = useKiosk()
+  const { displayCheckouts, setDisplayCheckouts, displayCheckins, setDisplayCheckins } = useKiosk()
   // Retrieve the previous location from the router state
   const locationBefore = location.state?.from;
 
@@ -26,7 +26,6 @@ const SuccessPage = () => {
     setTimeout(() => {
       navigate('/home');
       setDisplayCheckouts([]);
-      setCheckouts([]);
     }, 1500);
 
     Swal.fire({
@@ -111,9 +110,9 @@ const SuccessPage = () => {
                 <div className="text-[80px] mb-[15px]">🖨️</div>
                 <div className="text-[26px] font-bold text-[#2c3e50]">Print Receipt</div>
               </div>
-              <div className='bg-white border border-[3px] border-solid border-[#bdc3c7] rounded-[15px] py-[40px] px-[30px] text-center cursor-pointer transition-all duration-300 hover:border-[#2ecc71] hover:scale-105'>
+              <div className='bg-white border border-[3px] border-solid border-[#bdc3c7] rounded-[15px] py-[40px] px-[30px] text-center cursor-pointer transition-all duration-300 hover:border-[#2ecc71] hover:scale-105' onClick={() => handlePrint()}>
                 <div className="text-[80px] mb-[15px]">📱</div>
-                <div className="text-[26px] font-bold text-[#2c3e50]">Email Receipt</div>
+                <div className="text-[26px] font-bold text-[#2c3e50]" >Email Receipt</div>
               </div>
             </div>
           </div>
@@ -209,7 +208,7 @@ const SuccessPage = () => {
                 <div className="text-[80px] mb-[15px]">💳</div>
                 <div className="text-[26px] font-bold text-[#2c3e50]">Pay Now</div>
               </div>
-              <div className='bg-white border border-[3px] border-solid border-[#bdc3c7] rounded-[15px] py-[40px] px-[30px] text-center cursor-pointer transition-all duration-300 hover:border-[#2ecc71] hover:scale-105'>
+              <div className='bg-white border border-[3px] border-solid border-[#bdc3c7] rounded-[15px] py-[40px] px-[30px] text-center cursor-pointer transition-all duration-300 hover:border-[#2ecc71] hover:scale-105' onClick={() => handlePayNow()}>
                 <div className="text-[80px] mb-[15px]">🏦</div>
                 <div className="text-[26px] font-bold text-[#2c3e50]">Pay Later</div>
               </div>

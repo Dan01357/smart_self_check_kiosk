@@ -1,9 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
+import { useKiosk } from "../../context/KioskContext";
 
 const Footer = () => {
   const location = useLocation();
   const path = location.pathname;
-
+  const {setDisplayCheckouts, setDisplayCheckins} = useKiosk()
   // This replaces the locationBefore prop by reading the state passed during navigation
   const locationBefore = location.state?.from;
 
@@ -92,11 +93,18 @@ const Footer = () => {
 
   else if (path === '/success') {
     // Exact logic for handling where the user came from using navigation state
+    const handleResetDisplayCheckouts =() => {
+      setDisplayCheckouts([]);
+    }
+    const handleResetDisplayCheckins =() => {
+      setDisplayCheckins([]);
+    }
     if (locationBefore === '/checkout') {
+      
       return (
         <div className={wrapperClass}>
           <Link to="/home">
-            <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300">
+            <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={handleResetDisplayCheckouts}>
               <div className="mr-2">🏠</div>
               <div>Done</div>
             </button>
@@ -113,7 +121,7 @@ const Footer = () => {
       return (
         <div className={wrapperClass}>
           <Link to="/home">
-            <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300">
+            <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={handleResetDisplayCheckins}>
               <div className="mr-2">🏠</div>
               <div>Done</div>
             </button>
