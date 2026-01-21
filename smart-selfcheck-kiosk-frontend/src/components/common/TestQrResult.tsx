@@ -99,62 +99,76 @@ function SimpleScanner() {
 
 
   const handleCheckinLogic = useCallback(async (barcodeValue: string) => {
-    const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
+  // 1. Find the item in the global items list to get its item_id
+  const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
 
+  if (!itemData) {
+    return Swal.fire({
+      title: 'Not Found',
+      text: 'The barcode scanned was not found in the system.',
+      icon: 'warning',
+      confirmButtonText: 'OK'
+    });
+  }
 
-    if (!itemData) {
-      return Swal.fire({
-        title: 'Not Found',
-        text: 'The barcode scanned was not found in the system.',
-        icon: 'warning',
-        allowEnterKey: false,
-        confirmButtonText: 'OK'
+  // 2. CHECK: Does this item exist in the current patron's checkout list?
+  const currentCheckout = checkouts.find((c: any) => c.item_id === itemData.item_id);
+
+  // --- NEW SECURITY CHECK ---
+  if (!currentCheckout) {
+    return Swal.fire({
+      title: 'Action Denied',
+      text: 'This book is not in your checkout list. You can only return items you personally borrowed.',
+      icon: 'error',
+      confirmButtonText: 'OK'
+    });
+  }
+  // ---------------------------
+
+  // 3. Logic for overdue calculation (since we know currentCheckout exists now)
+  const isActuallyOverdue = new Date(currentCheckout.due_date) < new Date();
+
+  Swal.showLoading();
+  
+  try {
+    const response = await fetch(`${API_BASE}/api/checkin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ barcode: barcodeValue })
+    });
+    
+    const data = await response.json();
+
+    if (data.success) {
+      const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
+
+      const newReturn = {
+        title: biblio?.title || "Unknown Title",
+        barcode: barcodeValue,
+        isOverdue: isActuallyOverdue || data.isOverdue,
+        dueDate: currentCheckout.due_date
+      };
+
+      setDisplayCheckins((prev: any) => [newReturn, ...prev]);
+      
+      Swal.fire({ 
+        title: 'Success!', 
+        text: 'Returned successfully', 
+        icon: 'success', 
+        timer: 2000, 
+        showConfirmButton: false 
+      });
+    } else {
+      Swal.fire({
+        title: 'Check-in Error',
+        text: 'Server could not process the return.',
+        icon: 'error'
       });
     }
-
-    // --- LOGIC FOR OVERDUE CALCULATION ---
-    // Find the active checkout for this item before it is checked in
-    const currentCheckout = checkouts.find((c: any) => c.item_id === itemData.item_id);
-    const isActuallyOverdue = currentCheckout
-      ? new Date(currentCheckout.due_date) < new Date()
-      : false;
-
-    console.log(currentCheckout)
-    Swal.showLoading();
-    try {
-      const response = await fetch(`${API_BASE}/api/checkin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ barcode: barcodeValue })
-      });
-      const data = await response.json();
-      console.log(data, "hello")
-      if (data.success) {
-        const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
-
-        const newReturn = {
-          title: biblio?.title || "Unknown Title",
-          barcode: barcodeValue,
-          isOverdue: isActuallyOverdue || data.isOverdue,
-          dueDate: currentCheckout.due_date
-          // Combine frontend check with backend response
-        };
-
-        console.log(newReturn)
-        setDisplayCheckins((prev: any) => [newReturn, ...prev]);
-        Swal.fire({ title: 'Success!', text: 'Returned successfully', icon: 'success', timer: 2000, showConfirmButton: false, allowEnterKey: false });
-      } else {
-        Swal.fire({
-          title: 'Check-in Error',
-          text: 'This book is not currently checked out.',
-          icon: 'error',
-          allowEnterKey: false
-        });
-      }
-    } catch (err) {
-      Swal.fire({ title: 'Error', text: 'Connection failed', icon: 'error', allowEnterKey: false });
-    }
-  }, [items, biblios, checkouts, API_BASE]); // Added checkouts to dependency array
+  } catch (err) {
+    Swal.fire({ title: 'Error', text: 'Connection failed', icon: 'error' });
+  }
+}, [items, biblios, checkouts, API_BASE]); // Added checkouts to dependency array
 
   // --- Hardware Event Listener ---
   useEffect(() => {
