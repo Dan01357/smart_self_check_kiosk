@@ -39,7 +39,12 @@ const AccountPage = () => {
     fetchItems();
   }, []);
 
+  const totalOverdueBooks = checkouts.reduce((totalOverdue, book)=>{
+    const now = new Date()
+    const dueDate = new Date(book.due_date)
 
+    return dueDate < now ? totalOverdue + 1 : totalOverdue
+  },0)
 
   return (
     <div className='max-w-[1080px] min-h-[1920px] m-auto border-x border-x-solid border-x-gray-700'>
@@ -61,7 +66,7 @@ const AccountPage = () => {
           </div>
           <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
             <span>Overdue Items:</span>
-            <span>0</span>
+            <span>{totalOverdueBooks}</span>
           </div>
           <div className='text-[34px] font-bold mt-[15px] pt-[25px] border-t border-t-[3px] border-t-solid border-t-white/50 flex justify-between'>
             <span>Outstanding Fines:</span>
