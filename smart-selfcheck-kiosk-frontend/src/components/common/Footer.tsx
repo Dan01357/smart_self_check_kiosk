@@ -5,7 +5,7 @@ import { checkoutBook } from "../../services/kohaApi";
 const Footer = () => {
   const location = useLocation();
   const path = location.pathname;
-  const { setDisplayCheckouts, setDisplayCheckins, displayCheckouts, displayCheckins, patronId, items } = useKiosk()
+  const { displayCheckouts, displayCheckins, patronId, items } = useKiosk()
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
   // This replaces the locationBefore prop by reading the state passed during navigation
   const locationBefore = location.state?.from;
@@ -69,7 +69,6 @@ const Footer = () => {
                 body: JSON.stringify({ barcode: displayCheckout.externalId })
               });
             })
-            setDisplayCheckouts([])
 
           }}>
             <div className="mr-2">❌</div>
@@ -95,7 +94,6 @@ const Footer = () => {
               
               await checkoutBook(patronId, itemData.item_id);
             })
-            setDisplayCheckins([])
             console.log(displayCheckins)
           }}>
             <div className="mr-2">❌</div>
@@ -119,7 +117,7 @@ const Footer = () => {
       return (
         <div className={wrapperClass}>
           <Link to="/home">
-            <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={() => { setDisplayCheckouts([]); }}>
+            <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" >
               <div className="mr-2">🏠</div>
               <div>Done</div>
             </button>
@@ -136,7 +134,7 @@ const Footer = () => {
       return (
         <div className={wrapperClass}>
           <Link to="/home">
-            <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={() => { setDisplayCheckins([]); }}>
+            <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" >
               <div className="mr-2">🏠</div>
               <div>Done</div>
             </button>

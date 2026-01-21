@@ -1,8 +1,16 @@
 import Header from "../components/common/Header";
 import Footer from "../components/common/Footer";
 import { Link } from "react-router-dom";
+import { useKiosk } from "../context/KioskContext";
+import { useEffect } from "react";
 
 const HomePage = () => {
+  const {setDisplayCheckins, setDisplayCheckouts} = useKiosk()
+
+  useEffect(()=>{
+    setDisplayCheckins([]);
+    setDisplayCheckouts([]);
+  },[])
   return (
     <div className='max-w-[1080px] min-h-[1920px] m-auto border-x border-x-solid border-x-gray-700'>
       {/* Prop 'locationBefore' removed - Header now uses internal logic */}
