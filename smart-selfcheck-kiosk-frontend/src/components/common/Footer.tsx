@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useKiosk } from "../../context/KioskContext";
 import Swal from "sweetalert2";
 import axios from "axios";
+import { checkoutBook } from "../../services/kohaApi";
 
 const Footer = () => {
   const location = useLocation();
@@ -81,6 +82,30 @@ const Footer = () => {
     }
   };
 
+  const handleFinalCheckout = async () => {
+    if (displayCheckouts.length === 0) return;
+
+    Swal.fire({
+      title: 'Processing Checkouts...',
+      didOpen: () => Swal.showLoading(),
+      allowOutsideClick: false
+    });
+
+    try {
+      // Process all staged checkouts
+      for (const item of displayCheckouts) {
+        await checkoutBook(patronId, item.item_id);
+      }
+
+      Swal.close();
+      navigate("/success", { state: { from: path } });
+    } catch (error: any) {
+      console.error("Checkout Error:", error);
+      const errorMessage = error.response?.data?.error || "A book has already been checked out.";
+      Swal.fire({ title: 'Checkout Error', text: errorMessage, icon: 'error' });
+    }
+  };
+
   if (path === '/home') {
     return (
       <div className={wrapperClass}>
@@ -128,26 +153,22 @@ const Footer = () => {
   else if (path === '/checkout') {
     return (
       <div className={wrapperClass}>
-        <Link to="/home">
-          <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={() => {
-            displayCheckouts.map(async (displayCheckout) => {
-              await fetch(`${API_BASE}/api/checkin`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ barcode: displayCheckout.externalId })
-              });
-            })
+        {/* CANCEL: Just go home. No API calls = No trace in Koha */}
+        <button
+          className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300"
+          onClick={() => navigate("/home")}
+        >
+          <div className="mr-2">❌</div>
+          <div>Cancel</div>
+        </button>
 
-          }}>
-            <div className="mr-2">❌</div>
-            <div>Cancel</div>
-          </button>
-        </Link>
-        <Link to="/success" state={{ from: path }}>
-          <button className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300">
-            <div>✓ Complete Checkout</div>
-          </button>
-        </Link>
+        {/* COMPLETE: Actually perform the checkouts in the DB now */}
+        <button
+          className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300"
+          onClick={handleFinalCheckout}
+        >
+          <div>✓ Complete Checkout</div>
+        </button>
       </div>
     );
   }

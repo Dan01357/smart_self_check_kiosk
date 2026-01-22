@@ -5,15 +5,13 @@ import Swal from 'sweetalert2';
 import { useKiosk } from '../../context/KioskContext';
 import { api, postDataLogin } from '../../../app';
 import { useLocation, useNavigate } from 'react-router';
-import { checkoutBook } from '../../services/kohaApi';
-import { formatDate } from '../../utils/formatDate';
 
 function SimpleScanner() {
   const scanBuffer = useRef("");
   const {
     setAuthorized, setPatronId, setShowScanner, patronId,
     setItems, items, setCheckouts, checkouts, biblios, setBiblios, // added 'checkouts' here
-    setDisplayCheckouts, setDisplayCheckins
+    setDisplayCheckouts, setDisplayCheckins, displayCheckouts
   } = useKiosk();
 
   const navigate = useNavigate();
@@ -63,40 +61,49 @@ function SimpleScanner() {
 
   const handleCheckoutLogic = useCallback(async (barcodeValue: string) => {
     const itemData: any = items.find((item: any) => barcodeValue === item.external_id);
+
     if (!itemData) {
       return Swal.fire({
         title: 'Not Found',
         text: 'The barcode scanned was not found in the system.',
         icon: 'warning',
-        allowEnterKey: false,
         confirmButtonText: 'OK'
       });
     }
 
-    Swal.showLoading();
-    try {
-      const result = await checkoutBook(patronId, itemData.item_id);
-      if (!result?.checkout_id) throw new Error("Invalid checkout record.");
-
-      setCheckouts((prev: any) => [result, ...prev]);
-      const biblio: any = biblios.find((b: any) => b.biblio_id === itemData.biblio_id);
-
-      const newSessionItem = {
-        id: result.checkout_id,
-        title: biblio?.title || "Unknown Title",
-        externalId: itemData.external_id || "No Barcode",
-        dueDate: result.due_date ? new Date(result.due_date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : "N/A",
-        checkoutDate: result.checkout_date ? new Date(result.checkout_date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : "N/A",
-      };
-
-      setDisplayCheckouts((prev: any) => [newSessionItem, ...prev]);
-      Swal.fire({ title: 'Success!', text: `Checked out. Due: ${formatDate(result.due_date)}`, icon: 'success', timer: 2000, showConfirmButton: false, allowEnterKey: false });
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.message || "Failed to checkout";
-      Swal.fire({ title: 'Error', text: errorMessage === "Confirmation error" ? "Book already Checked Out" : errorMessage, icon: 'error', allowEnterKey: false });
+    if (displayCheckouts.some((i: any) => i.externalId === barcodeValue)) {
+      return Swal.fire({ title: 'Already Added', icon: 'info', timer: 1000, showConfirmButton: false });
     }
-  }, [items, biblios, patronId]);
 
+    const biblio: any = biblios.find((b: any) => b.biblio_id === itemData.biblio_id);
+
+    // --- CALCULATE ESTIMATED DUE DATE (e.g., 14 Days from now) ---
+    const estDate = new Date();
+    estDate.setDate(estDate.getDate() + 14);
+    const formattedEstDue = estDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric'
+    });
+
+    const newSessionItem = {
+      item_id: itemData.item_id,
+      title: biblio?.title || "Unknown Title",
+      externalId: itemData.external_id || "No Barcode",
+      dueDate: formattedEstDue, // Displays the calculated date instead of "Pending"
+      checkoutDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+    };
+
+    setDisplayCheckouts((prev: any) => [newSessionItem, ...prev]);
+
+    Swal.fire({
+      title: 'Added!',
+      text: `${newSessionItem.title} added to list`,
+      icon: 'success',
+      timer: 1500,
+      showConfirmButton: false
+    });
+  }, [items, biblios, displayCheckouts]);
 
   const handleCheckinLogic = useCallback(async (barcodeValue: string) => {
     const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
