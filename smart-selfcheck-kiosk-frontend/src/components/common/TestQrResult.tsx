@@ -109,7 +109,7 @@ function SimpleScanner() {
     const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
 
     if (!itemData) {
-      return Swal.fire({ title: 'Not Found', text: 'Barcode not found.', icon: 'warning' });
+      return Swal.fire({ title: 'Not Found', text: 'The barcode scanned was not found in the system.', icon: 'warning' });
     }
 
     const currentCheckout = checkouts.find((c: any) => c.item_id === itemData.item_id);

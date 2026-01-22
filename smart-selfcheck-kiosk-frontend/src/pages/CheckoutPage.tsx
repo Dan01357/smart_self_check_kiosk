@@ -4,41 +4,65 @@ import { useKiosk } from '../context/KioskContext';
 import Lottie from "lottie-react";
 import animationData from "../assets/Scanning Document.json";
 import SimpleScanner from '../components/common/TestQrResult';
-import { checkoutBook } from '../services/kohaApi'; // Kept for manual entry bridge
 import Swal from 'sweetalert2';
 
 const CheckoutPage = () => {
-  const { patronId, openKeyboard, setCheckouts, biblios, items, displayCheckouts, setDisplayCheckouts } = useKiosk();
+  const { openKeyboard, biblios, items, displayCheckouts, setDisplayCheckouts } = useKiosk();
 
-  const handleManualEntry = () => {
-    openKeyboard(async (barcodeValue) => {
-      // Re-using same logic structure for manual entry
-      const itemData: any = items.find((item: any) => barcodeValue === item.external_id);
-      if (itemData) {
-        Swal.showLoading();
-        try {
-          const result = await checkoutBook(patronId, itemData.item_id);
-          if (result?.checkout_id) {
-            setCheckouts((prev: any) => [result, ...prev]);
-            const biblio: any = biblios.find((b: any) => b.biblio_id === itemData.biblio_id);
-            const newSessionItem = {
-              id: result.checkout_id,
-              title: biblio?.title || "Unknown Title",
-              externalId: itemData.external_id || "No Barcode",
-              dueDate: result.due_date ? new Date(result.due_date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : "N/A",
-              checkoutDate: result.checkout_date ? new Date(result.checkout_date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : "N/A",
-            };
-            setDisplayCheckouts((prev: any) => [newSessionItem, ...prev]);
-            Swal.fire({ title: 'Success!', text: `Item checked out.`, icon: 'success', timer: 2000, showConfirmButton: false });
-          }
-        } catch (error: any) {
-          Swal.fire({ title: 'Error', text: "Failed to checkout", icon: 'error' });
-        }
-      } else {
-        Swal.fire({ title: 'Not Found', text: 'Barcode not found.', icon: 'warning' });
+  // Inside CheckoutPage.tsx
+
+const handleManualEntry = () => {
+  openKeyboard((barcodeValue) => {
+    // 1. Find the item
+    const itemData: any = items.find((item: any) => barcodeValue === item.external_id);
+
+    if (itemData) {
+      // 2. Prevent duplicate adding to the UI list
+      if (displayCheckouts.some((i: any) => i.externalId === barcodeValue)) {
+        return Swal.fire({ title: 'Already Added', icon: 'info', timer: 1000, showConfirmButton: false });
       }
-    });
-  };
+
+      // 3. Get Biblio data
+      const biblio: any = biblios.find((b: any) => b.biblio_id === itemData.biblio_id);
+
+      // 4. Calculate Estimated Due Date (matching scanner logic)
+      const estDate = new Date();
+      estDate.setDate(estDate.getDate() + 14);
+      const formattedEstDue = estDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric'
+      });
+
+      // 5. Create the item object (STRICTLY matching SimpleScanner logic)
+      const newSessionItem = {
+        item_id: itemData.item_id, // CRITICAL for Footer loop
+        title: biblio?.title || "Unknown Title",
+        externalId: itemData.external_id || "No Barcode",
+        dueDate: formattedEstDue,
+        checkoutDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+      };
+
+      // 6. Update UI only
+      setDisplayCheckouts((prev: any) => [newSessionItem, ...prev]);
+
+      Swal.fire({ 
+        title: 'Added!', 
+        text: `${newSessionItem.title} added to list`, 
+        icon: 'success', 
+        timer: 1500, 
+        showConfirmButton: false 
+      });
+
+    } else {
+      Swal.fire({ 
+        title: 'Not Found', 
+        text: 'The barcode entered was not found in the system.', 
+        icon: 'warning' 
+      });
+    }
+  });
+};
 
   return (
     <div className='max-w-[1080px] min-h-[1920px] m-auto border-x border-x-solid border-x-gray-700'>

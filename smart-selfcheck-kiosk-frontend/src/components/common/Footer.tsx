@@ -7,7 +7,7 @@ import { checkoutBook } from "../../services/kohaApi";
 const Footer = () => {
   const location = useLocation();
   const path = location.pathname;
-  const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts } = useKiosk()
+  const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts, setDisplayCheckins, setDisplayCheckouts } = useKiosk()
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
   // This replaces the locationBefore prop by reading the state passed during navigation
   const locationBefore = location.state?.from;
@@ -73,7 +73,7 @@ const Footer = () => {
       );
 
       await Promise.all(promises);
-
+      setDisplayCheckins([]);
       // Clear state and navigate
       navigate("/success", { state: { from: path } });
       Swal.close();
@@ -96,6 +96,7 @@ const Footer = () => {
       for (const item of displayCheckouts) {
         await checkoutBook(patronId, item.item_id);
       }
+      setDisplayCheckouts([]);
 
       Swal.close();
       navigate("/success", { state: { from: path } });
@@ -104,6 +105,12 @@ const Footer = () => {
       const errorMessage = error.response?.data?.error || "A book has already been checked out.";
       Swal.fire({ title: 'Checkout Error', text: errorMessage, icon: 'error' });
     }
+  };
+
+  const handleCancel = () => {
+    setDisplayCheckouts([]);
+    setDisplayCheckins([]);
+    navigate("/home");
   };
 
   if (path === '/home') {
@@ -156,7 +163,7 @@ const Footer = () => {
         {/* CANCEL: Just go home. No API calls = No trace in Koha */}
         <button
           className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300"
-          onClick={() => navigate("/home")}
+          onClick={handleCancel}
         >
           <div className="mr-2">❌</div>
           <div>Cancel</div>
@@ -179,7 +186,7 @@ const Footer = () => {
         {/* CANCEL: Just go home. No API calls = No date changes! */}
         <button
           className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px]"
-          onClick={() => navigate("/home")}
+          onClick={handleCancel}
         >
           <div className="mr-2">❌</div>
           <div>Cancel</div>
