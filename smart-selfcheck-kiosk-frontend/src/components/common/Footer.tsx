@@ -219,45 +219,68 @@ const Footer = () => {
   }
 
   else if (path === '/success') {
-    // Exact logic for handling where the user came from using navigation state
+    // 1. Create the reset and navigate functions
+    const handleMoreCheckout = () => {
+      setDisplayCheckouts([]); // Clear the checkout list
+      navigate("/checkout");   // Navigate
+    };
+
+    const handleMoreCheckin = () => {
+      setDisplayCheckins([]);  // Clear the return list
+      navigate("/checkin");    // Navigate
+    };
+
+    const handleDone = () => {
+      setDisplayCheckouts([]);
+      setDisplayCheckins([]);
+      navigate("/home");
+    };
 
     if (locationBefore === '/checkout') {
-
       return (
         <div className={wrapperClass}>
-          <Link to="/home">
-            <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" >
-              <div className="mr-2">🏠</div>
-              <div>Done</div>
-            </button>
-          </Link>
-          <Link to="/checkout">
-            <button className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)]">
-              <div>Checkout More Items</div>
-            </button>
-          </Link>
+          {/* Use handleDone instead of Link */}
+          <button
+            className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300"
+            onClick={handleDone}
+          >
+            <div className="mr-2">🏠</div>
+            <div>Done</div>
+          </button>
+
+          {/* Use handleMoreCheckout instead of Link */}
+          <button
+            className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300"
+            onClick={handleMoreCheckout}
+          >
+            <div>Checkout More Items</div>
+          </button>
         </div>
       );
     }
     else if (locationBefore === '/checkin') {
       return (
         <div className={wrapperClass}>
-          <Link to="/home">
-            <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" >
-              <div className="mr-2">🏠</div>
-              <div>Done</div>
-            </button>
-          </Link>
-          <Link to="/checkin">
-            <button className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)]">
-              <div>Return More Items</div>
-            </button>
-          </Link>
+          {/* Use handleDone instead of Link */}
+          <button
+            className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300"
+            onClick={handleDone}
+          >
+            <div className="mr-2">🏠</div>
+            <div>Done</div>
+          </button>
+
+          {/* Use handleMoreCheckin instead of Link */}
+          <button
+            className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300"
+            onClick={handleMoreCheckin}
+          >
+            <div>Return More Items</div>
+          </button>
         </div>
       );
     }
   }
-
   else if (path === '/renew') {
     return (
       <div className={wrapperClass}>

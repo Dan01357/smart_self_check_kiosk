@@ -77,7 +77,7 @@ const SuccessPage = () => {
             </div>
             <div className='text-[34px] font-bold mt-[15px] pt-[25px] border-t border-t-[3px] border-t-solid border-t-white/50 flex justify-between'>
               <span>Renewals Available:</span>
-              <span>2 per item</span>
+              <span>10 per item</span>
             </div>
           </div>
           <div className='bg-[rgb(236_240_241)] p-[30px] rounded-[15px]'>
