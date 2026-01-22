@@ -73,7 +73,6 @@ const Footer = () => {
       );
 
       await Promise.all(promises);
-      setDisplayCheckins([]);
       // Clear state and navigate
       navigate("/success", { state: { from: path } });
       Swal.close();
@@ -96,7 +95,6 @@ const Footer = () => {
       for (const item of displayCheckouts) {
         await checkoutBook(patronId, item.item_id);
       }
-      setDisplayCheckouts([]);
 
       Swal.close();
       navigate("/success", { state: { from: path } });
