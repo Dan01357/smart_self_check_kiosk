@@ -7,7 +7,7 @@ const PublicRoute = () => {
   // If the user is already authorized, send them to the home page
   // instead of showing the login page
   if (authorized) {
-    return <Navigate to="/home" replace />;
+    return <Navigate to="/checkout" replace />;
   }
 
   return <Outlet />;

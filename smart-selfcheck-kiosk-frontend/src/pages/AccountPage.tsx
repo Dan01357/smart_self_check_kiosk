@@ -7,17 +7,17 @@ import { formatDate } from '../utils/formatDate'
 import { diffInDaysAccountPage } from '../utils/dueDateFormulate'
 
 const AccountPage = () => {
-
+  // Data is pulled from KioskContext (which hydrates from LocalStorage)
   const { checkouts, setCheckouts, setBiblios, biblios, items, setItems, patronId } = useKiosk()
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
-  // 1. Fetch necessary data for lookups on mount
   useEffect(() => {
+    // Only fetch if we have a valid patronId
+    if (!patronId) return;
+
     const fetchCheckouts = async () => {
       try {
-
         const response = await axios.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`);
-        console.log(response.data)
         setCheckouts(response.data);
       } catch (e) { console.error("Checkout fetch failed", e); }
     }
@@ -37,18 +37,16 @@ const AccountPage = () => {
     fetchCheckouts();
     fetchBiblios();
     fetchItems();
-  }, []);
+  }, [patronId, API_BASE, setCheckouts, setBiblios, setItems]);
 
   const totalOverdueBooks = checkouts.reduce((totalOverdue, book)=>{
     const now = new Date()
     const dueDate = new Date(book.due_date)
-
     return dueDate < now ? totalOverdue + 1 : totalOverdue
   },0)
 
   return (
     <div className='max-w-[1080px] min-h-[1920px] m-auto border-x border-x-solid border-x-gray-700'>
-      {/* Header and Footer now pull logic from internal context/router */}
       <Header />
 
       <div className='pt-60 flex p-[40px] flex-col overflow-auto pb-30'>
@@ -80,29 +78,25 @@ const AccountPage = () => {
           </div>
           <div className='flex flex-col gap-5'>
             {checkouts.map((checkout: any) => {
+              // Lookup logic using persisted data
+              const item = (items as any[]).find((i: any) => i.item_id === checkout?.item_id);
+              const biblio = (biblios as any[]).find((b: any) => b.biblio_id === item?.biblio_id);
 
               return (
                 <div key={checkout.checkout_id} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[rgb(46_204_113)] border-l-[5px]'>
                   <div className='text-[50px] min-w-[50px] mr-5'>📘</div>
                   <div>
                     <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>
-                      {(biblios as any[]).find((b: any) =>
-                        b.biblio_id === (items as any[]).find((i: any) =>
-                          i.item_id === checkout?.item_id
-                        )?.biblio_id
-                      )?.title || "Unknown Title"}
+                      {biblio?.title || "Loading Title..."}
                     </div>
-                    <div className='text-[20px] text-[rgb(127_140_141)]'>Due: {formatDate(checkout.due_date)
-                    } </div>
-                    {/* <div className='text-[#2ecc71] text-[22px] font-bold'>
-                      
-                    </div> */}
+                    <div className='text-[20px] text-[rgb(127_140_141)]'>Due: {formatDate(checkout.due_date)} </div>
+                    
                     {diffInDaysAccountPage(checkout) > 0
                       ? <div className='text-[#2ecc71] text-[22px] font-bold'>
                         {`${diffInDaysAccountPage(checkout)} days left`}
                       </div>
                       : <div className='text-[#e74c3c] text-[22px] font-bold'>
-                        {`${Math.abs(diffInDaysAccountPage(checkout)) === 0 || Math.abs(diffInDaysAccountPage(checkout)) ===1 
+                        {`${Math.abs(diffInDaysAccountPage(checkout)) === 0 || Math.abs(diffInDaysAccountPage(checkout)) === 1 
                           ? '1 day overdue'
                           : `${Math.abs(diffInDaysAccountPage(checkout))} days overdue`
                         }`}
@@ -110,25 +104,10 @@ const AccountPage = () => {
                   </div>
                   <div className='text-[rgb(46_204_113)] ml-auto'>✓</div>
                 </div>
-
-
               );
-
-            }
-            )}
-
+            })}
           </div>
         </div>
-
-        {/*Include this if there are holds*/}
-        {/* <div className='bg-[#fff3e0] border-l-[5px] border-l-solid border-l-[#ff9800] rounded-[20px] p-[30px] my-[30px]'>
-          <div className="text-[28px] font-bold text-[#e65100] mb-[15px] flex items-center gap-[15px]">
-            📚 Holds Ready for Pickup
-          </div>
-          <div className="text-[24px] text-[#e65100]">
-            You have 2 items waiting at the Hold Shelf. Please pick them up within 7 days.
-          </div>
-        </div> */}
       </div>
 
       <Footer />
