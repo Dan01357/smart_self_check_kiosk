@@ -99,76 +99,44 @@ function SimpleScanner() {
 
 
   const handleCheckinLogic = useCallback(async (barcodeValue: string) => {
-    // 1. Find the item in the global items list to get its item_id
     const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
 
     if (!itemData) {
-      return Swal.fire({
-        title: 'Not Found',
-        text: 'The barcode scanned was not found in the system.',
-        icon: 'warning',
-        confirmButtonText: 'OK'
-      });
+      return Swal.fire({ title: 'Not Found', text: 'Barcode not found.', icon: 'warning' });
     }
 
-    // 2. CHECK: Does this item exist in the current patron's checkout list?
     const currentCheckout = checkouts.find((c: any) => c.item_id === itemData.item_id);
 
-    // --- NEW SECURITY CHECK ---
     if (!currentCheckout) {
       return Swal.fire({
         title: 'Action Denied',
-        text: 'This book is not in your checkout list. You can only return items you personally borrowed.',
-        icon: 'error',
-        confirmButtonText: 'OK'
+        text: 'This book is not in your checkout list.',
+        icon: 'error'
       });
     }
-    // ---------------------------
 
-    // 3. Logic for overdue calculation (since we know currentCheckout exists now)
+    // Only check if it's overdue for the UI display
     const isActuallyOverdue = new Date(currentCheckout.due_date) < new Date();
+    const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
 
-    Swal.showLoading();
+    const newReturn = {
+      title: biblio?.title || "Unknown Title",
+      barcode: barcodeValue,
+      isOverdue: isActuallyOverdue,
+      dueDate: currentCheckout.due_date
+    };
 
-    try {
-      const response = await fetch(`${API_BASE}/api/checkin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ barcode: barcodeValue })
-      });
+    // Update the UI list ONLY (Do not call /api/checkin yet)
+    setDisplayCheckins((prev: any) => [newReturn, ...prev]);
 
-      const data = await response.json();
-
-      if (data.success) {
-        const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
-
-        const newReturn = {
-          title: biblio?.title || "Unknown Title",
-          barcode: barcodeValue,
-          isOverdue: isActuallyOverdue || data.isOverdue,
-          dueDate: currentCheckout.due_date
-        };
-
-        setDisplayCheckins((prev: any) => [newReturn, ...prev]);
-
-        Swal.fire({
-          title: 'Success!',
-          text: 'Returned successfully',
-          icon: 'success',
-          timer: 2000,
-          showConfirmButton: false
-        });
-      } else {
-        Swal.fire({
-          title: 'Check-in Error',
-          text: 'Server could not process the return.',
-          icon: 'error'
-        });
-      }
-    } catch (err) {
-      Swal.fire({ title: 'Error', text: 'Connection failed', icon: 'error' });
-    }
-  }, [items, biblios, checkouts, API_BASE]); // Added checkouts to dependency array
+    Swal.fire({
+      title: 'Scanned',
+      text: 'Item added to return list',
+      icon: 'success',
+      timer: 1000,
+      showConfirmButton: false
+    });
+  }, [items, biblios, checkouts]);
 
   // --- Hardware Event Listener ---
   useEffect(() => {

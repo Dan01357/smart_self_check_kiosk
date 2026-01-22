@@ -1,13 +1,12 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useKiosk } from "../../context/KioskContext";
-import { checkoutBook } from "../../services/kohaApi";
 import Swal from "sweetalert2";
 import axios from "axios";
 
 const Footer = () => {
   const location = useLocation();
   const path = location.pathname;
-  const { displayCheckouts, displayCheckins, patronId, items, checkouts, setCheckouts } = useKiosk()
+  const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts } = useKiosk()
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
   // This replaces the locationBefore prop by reading the state passed during navigation
   const locationBefore = location.state?.from;
@@ -51,6 +50,34 @@ const Footer = () => {
     } catch (error) {
       console.error("Bulk renewal failed", error);
       Swal.fire({ title: 'Error', text: 'Failed to process bulk renewal.', icon: 'error' });
+    }
+  };
+  const navigate = useNavigate();
+
+  const handleFinalCheckin = async () => {
+    Swal.fire({
+      title: 'Processing Returns...',
+      didOpen: () => Swal.showLoading(),
+      allowOutsideClick: false
+    });
+
+    try {
+      // Perform the actual checkins only now
+      const promises = displayCheckins.map(item =>
+        fetch(`${API_BASE}/api/checkin`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ barcode: item.barcode })
+        })
+      );
+
+      await Promise.all(promises);
+
+      // Clear state and navigate
+      navigate("/success", { state: { from: path } });
+      Swal.close();
+    } catch (error) {
+      Swal.fire({ title: 'Error', text: 'Some items failed to return.', icon: 'error' });
     }
   };
 
@@ -128,24 +155,22 @@ const Footer = () => {
   else if (path === '/checkin') {
     return (
       <div className={wrapperClass}>
-        <Link to="/home">
-          <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={() => {
-            displayCheckins.map(async (displayCheckin) => {
-              const itemData: any = items.find((item: any) => displayCheckin.barcode === item.external_id);
+        {/* CANCEL: Just go home. No API calls = No date changes! */}
+        <button
+          className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px]"
+          onClick={() => navigate("/home")}
+        >
+          <div className="mr-2">❌</div>
+          <div>Cancel</div>
+        </button>
 
-              await checkoutBook(patronId, itemData.item_id);
-            })
-            console.log(displayCheckins)
-          }}>
-            <div className="mr-2">❌</div>
-            <div>Cancel</div>
-          </button>
-        </Link>
-        <Link to="/success" state={{ from: path }}>
-          <button className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300">
-            <div>✓ Complete Return</div>
-          </button>
-        </Link>
+        {/* COMPLETE: Now we actually talk to the server */}
+        <button
+          className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)]"
+          onClick={handleFinalCheckin}
+        >
+          <div>✓ Complete Return</div>
+        </button>
       </div>
     );
   }
