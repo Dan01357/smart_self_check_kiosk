@@ -158,6 +158,7 @@ const Footer = () => {
   }
 
   else if (path === '/checkout') {
+    const isListEmpty = displayCheckouts.length === 0;
     return (
       <div className={wrapperClass}>
         {/* CANCEL: Just go home. No API calls = No trace in Koha */}
@@ -170,17 +171,26 @@ const Footer = () => {
         </button>
 
         {/* COMPLETE: Actually perform the checkouts in the DB now */}
-        <button
-          className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300"
-          onClick={handleFinalCheckout}
-        >
-          <div>✓ Complete Checkout</div>
-        </button>
+        {isListEmpty
+          ? <button
+            className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] !cursor-default opacity-[0.5]"
+          >
+            <div>✓ Complete Checkout</div>
+          </button>
+          : <button
+            className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300"
+            onClick={handleFinalCheckout}
+          >
+            <div>✓ Complete Checkout</div>
+          </button>
+        }
+
       </div>
     );
   }
 
   else if (path === '/checkin') {
+    const isListEmpty = displayCheckins.length === 0;
     return (
       <div className={wrapperClass}>
         {/* CANCEL: Just go home. No API calls = No date changes! */}
@@ -193,12 +203,19 @@ const Footer = () => {
         </button>
 
         {/* COMPLETE: Now we actually talk to the server */}
-        <button
-          className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)]"
-          onClick={handleFinalCheckin}
-        >
-          <div>✓ Complete Return</div>
-        </button>
+        {isListEmpty
+          ? <button
+            className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] !cursor-default opacity-[0.5]"
+          >
+            <div>✓ Complete Return</div>
+          </button>
+          : <button
+            className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300"
+            onClick={handleFinalCheckin}
+          >
+            <div>✓ Complete Checkout</div>
+          </button>
+        }
       </div>
     );
   }
