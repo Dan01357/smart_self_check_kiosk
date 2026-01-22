@@ -82,27 +82,53 @@ const AccountPage = () => {
               const item = (items as any[]).find((i: any) => i.item_id === checkout?.item_id);
               const biblio = (biblios as any[]).find((b: any) => b.biblio_id === item?.biblio_id);
 
+              // DESIGN LOGIC FROM CHECKIN PAGE
+              const diff = diffInDaysAccountPage(checkout);
+              const isOverdue = diff <= 0;
+              const absDiff = Math.abs(diff);
+              // Koha logic: if it's due today (0) or past, it's at least 1 day late in display
+              const daysLate = Math.max(1, absDiff);
+
+              let statusColor = '#3498db'; // Blue (On time)
+              let statusEmoji = '📘';
+
+              if (isOverdue) {
+                if (daysLate >= 4) {
+                  statusColor = '#e74c3c'; // Red (4+ days)
+                  statusEmoji = '📕';
+                } else {
+                  statusColor = '#e67e22'; // Orange (1-3 days)
+                  statusEmoji = '📙';
+                }
+              }
+
               return (
-                <div key={checkout.checkout_id} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[rgb(46_204_113)] border-l-[5px]'>
-                  <div className='text-[50px] min-w-[50px] mr-5'>📘</div>
+                <div 
+                  key={checkout.checkout_id} 
+                  className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[5px]'
+                  style={{ borderLeftColor: statusColor }}
+                >
+                  <div className='text-[50px] min-w-[50px] mr-5'>{statusEmoji}</div>
                   <div>
                     <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>
                       {biblio?.title || "Loading Title..."}
                     </div>
                     <div className='text-[20px] text-[rgb(127_140_141)]'>Due: {formatDate(checkout.due_date)} </div>
                     
-                    {diffInDaysAccountPage(checkout) > 0
-                      ? <div className='text-[#2ecc71] text-[22px] font-bold'>
-                        {`${diffInDaysAccountPage(checkout)} days left`}
+                    {diff > 0
+                      ? <div className='text-[#3498db] text-[22px] font-bold'>
+                        {`${diff} days left`}
                       </div>
-                      : <div className='text-[#e74c3c] text-[22px] font-bold'>
-                        {`${Math.abs(diffInDaysAccountPage(checkout)) === 0 || Math.abs(diffInDaysAccountPage(checkout)) === 1 
+                      : <div className='text-[22px] font-bold' style={{ color: statusColor }}>
+                        {`${daysLate === 0 || daysLate === 1 
                           ? '1 day overdue'
-                          : `${Math.abs(diffInDaysAccountPage(checkout))} days overdue`
+                          : `${daysLate} days overdue`
                         }`}
                       </div>}
                   </div>
-                  <div className='text-[rgb(46_204_113)] ml-auto'>✓</div>
+                  <div className='ml-auto text-[24px]' style={{ color: statusColor }}>
+                    {isOverdue ? '⚠️' : '✓'}
+                  </div>
                 </div>
               );
             })}

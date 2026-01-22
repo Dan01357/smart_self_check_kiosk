@@ -5,40 +5,70 @@ import animationData from "../assets/Scanning Document.json";
 import { useKiosk } from '../context/KioskContext';
 import SimpleScanner from '../components/common/TestQrResult';
 import { diffInDays } from '../utils/dueDateFormulate';
-import Swal from 'sweetalert2'; // Make sure Swal is imported
+import Swal from 'sweetalert2'; 
+import { useEffect } from 'react';
+import axios from 'axios';
 
 const CheckinPage = () => {
-  // Destructure the necessary data from context
   const {
     openKeyboard,
     displayCheckins,
     items,
     checkouts,
     biblios,
-    setDisplayCheckins
+    setDisplayCheckins,
+    setCheckouts,
+    setBiblios,
+    setItems,
+    patronId
   } = useKiosk();
+
+  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
+  // 1. EXACT FETCH LOGIC FROM ACCOUNT PAGE (Fastest updates)
+  useEffect(() => {
+    if (!patronId) return;
+
+    const fetchCheckouts = async () => {
+      try {
+        const response = await axios.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`);
+        setCheckouts(response.data);
+      } catch (e) { console.error("Checkout fetch failed", e); }
+    }
+    const fetchBiblios = async () => {
+      try {
+        const response = await axios.get(`${API_BASE}/api/v1/biblios`);
+        setBiblios(response.data);
+      } catch (e) { console.error("Biblio fetch failed", e); }
+    }
+    const fetchItems = async () => {
+      try {
+        const response = await axios.get(`${API_BASE}/api/v1/items`);
+        setItems(response.data);
+      } catch (e) { console.error("Items fetch failed", e); }
+    }
+
+    fetchCheckouts();
+    fetchBiblios();
+    fetchItems();
+  }, [patronId, API_BASE, setCheckouts, setBiblios, setItems]);
 
   const handleManualEntry = () => {
     openKeyboard((barcodeValue) => {
-      // 1. Find the item
       const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
-
       if (!itemData) {
-        return Swal.fire({ title: 'Not Found', text: 'The barcode scanned was not found in the system.', icon: 'warning' });
+        return Swal.fire({ title: 'Not Found', text: 'The barcode scanned was not found in the system', icon: 'warning' });
       }
 
-      // 2. PREVENT DUPLICATE (Logic based on Checkout Page)
       if (displayCheckins.some((i: any) => i.barcode === barcodeValue)) {
         return Swal.fire({ title: 'Already Added', icon: 'info', timer: 1000, showConfirmButton: false });
       }
 
-      // 3. CHECK: Does this item exist in the current patron's checkout list?
       const currentCheckout = checkouts.find((c: any) => c.item_id === itemData.item_id);
       if (!currentCheckout) {
         return Swal.fire({ title: 'Action Denied', text: 'This book is not in your checkout list.', icon: 'error' });
       }
 
-      // ... (rest of your logic for newReturn and setDisplayCheckins)
       const isActuallyOverdue = new Date(currentCheckout.due_date) < new Date();
       const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
 
@@ -62,7 +92,6 @@ const CheckinPage = () => {
         <div className="m-auto flex flex-col justify-center items-center overflow-auto">
           <div className="text-[42px] mb-[35px] font-[700]">Place Items on RFID Reader</div>
 
-          {/* UPDATED: Calling handleManualEntry instead of empty arrow function */}
           <div
             className="flex flex-col bg-gradient-to-br from-[rgb(30_58_95)] to-[rgb(44_95_158)] py-[50px] px-[200px] items-center rounded-[25px] border border-dashed border-[5px] border-[rgb(52_152_219)] m-[30px] overflow-hidden min-h-[400px] w-[1000px] cursor-pointer"
             onClick={handleManualEntry}
@@ -85,21 +114,28 @@ const CheckinPage = () => {
             </div>
           </div>
           <div className='flex flex-col gap-5'>
-            {displayCheckins.map((item: any, index: number) => {
-              // Synchronize logic: Get the absolute difference and ensure it's at least 1 if overdue
-              const rawDiff = diffInDays(item);
+            {displayCheckins.map((scannedItem: any, index: number) => {
+              // 2. LIVE LOOKUP LOGIC: This ensures data updates instantly on the first refresh
+              const itemInfo = items.find((i: any) => i.external_id === scannedItem.barcode);
+              const checkoutInfo = checkouts.find((c: any) => c.item_id === itemInfo?.item_id);
+              
+              // Use fresh data from checkout if available, otherwise fallback to scanned item data
+              const finalDueDate = checkoutInfo ? checkoutInfo.due_date : scannedItem.dueDate;
+              const isOverdue = new Date(finalDueDate) < new Date();
+              
+              // Calculate days late using the fresh date
+              const rawDiff = diffInDays({ ...scannedItem, dueDate: finalDueDate });
               const daysLate = Math.max(1, Math.abs(rawDiff));
 
-              // Logic for the three states
-              let statusColor = '#3498db'; // Blue (On time)
+              let statusColor = '#3498db'; 
               let statusEmoji = '📘';
 
-              if (item.isOverdue) {
+              if (isOverdue) {
                 if (daysLate >= 4) {
-                  statusColor = '#e74c3c'; // Red (4+ days)
+                  statusColor = '#e74c3c'; 
                   statusEmoji = '📕';
                 } else {
-                  statusColor = '#e67e22'; // Orange (1-3 days)
+                  statusColor = '#e67e22'; 
                   statusEmoji = '📙';
                 }
               }
@@ -113,10 +149,10 @@ const CheckinPage = () => {
                   <div className='text-[50px] min-w-[50px] mr-5'>{statusEmoji}</div>
 
                   <div>
-                    <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{item.title}</div>
-                    <div className='text-[20px] text-[rgb(127_140_141)]'>Barcode: {item.barcode}</div>
+                    <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{scannedItem.title}</div>
+                    <div className='text-[20px] text-[rgb(127_140_141)]'>Barcode: {scannedItem.barcode}</div>
                     <div className='text-[20px] text-[rgb(127_140_141)]'>
-                      {item.isOverdue
+                      {isOverdue
                         ? `${daysLate} ${daysLate === 1 ? 'day' : 'days'} overdue`
                         : 'Returned on time'
                       }
@@ -124,7 +160,7 @@ const CheckinPage = () => {
                   </div>
 
                   <div className='ml-auto text-[24px]' style={{ color: statusColor }}>
-                    {item.isOverdue ? '⚠️' : '✓'}
+                    {isOverdue ? '⚠️' : '✓'}
                   </div>
                 </div>
               );
