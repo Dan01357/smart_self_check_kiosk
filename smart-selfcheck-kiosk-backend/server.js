@@ -86,7 +86,7 @@ function sendSipMessage(message) {
 // HTTP Endpoint for React
 app.post('/api/checkin', async (req, res) => {
     const { barcode } = req.body;
-    
+
     try {
         // 1. Find the item ID first using the barcode
         const items = await safeKohaGet(`/items?external_id=${barcode}`);
@@ -109,9 +109,9 @@ app.post('/api/checkin', async (req, res) => {
         const sipDate = getSipTimestamp();
         const checkinMsg = `09N${sipDate}${sipDate}|APMARAWI|AOMARAWI|AB${barcode}|`;
         const result = await sendSipMessage(checkinMsg);
-        
+
         const success = result.substring(0, 3) === '101';
-        
+
         res.json({
             success,
             raw: result,
@@ -151,10 +151,13 @@ app.post("/api/v1/auth/login", async (req, res) => {
         // Safety check: ensure patrons is an array
         const patronList = Array.isArray(patrons) ? patrons : [];
         const authorized = patronList.find(p => p.cardnumber === cardnumber);
-
+        
         if (authorized) {
             console.log(`Login Success: ${cardnumber}`);
-            res.json({ success: "true", message: "Login Successful", patron_id: authorized.patron_id });
+            res.json({
+                success: "true", message: "Login Successful", patron_id: authorized.patron_id,
+                patron_name: `${authorized.firstname} ${authorized.surname}`
+            });
         } else {
             console.log(`Login Failed: ${cardnumber}`);
             res.json({ success: "false", message: "Card number does not exist" });
@@ -195,7 +198,7 @@ app.post("/api/v1/checkouts", async (req, res) => {
 
 // 4. Get Checkouts (For UI History)
 app.get(`/api/v1/checkouts`, async (req, res) => {
-    const {patronId} = await req.query
+    const { patronId } = await req.query
     console.log(patronId)
     const data = await safeKohaGet(`/patrons/${patronId}/checkouts`);
     res.json(data);
@@ -225,7 +228,7 @@ app.post("/api/v1/renew", async (req, res) => {
 
         // Koha API renewal endpoint: POST /checkouts/{checkout_id}/renewal
         const response = await axios.post(
-            `${KOHA_URL}/checkouts/${checkout_id}/renewal`, 
+            `${KOHA_URL}/checkouts/${checkout_id}/renewal`,
             {}, // Koha expects an empty body for this POST
             { headers: authHeader }
         );

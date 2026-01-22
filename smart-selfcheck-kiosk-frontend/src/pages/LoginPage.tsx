@@ -8,7 +8,7 @@ import SimpleScanner from "../components/common/TestQrResult";
 
 const LoginPage = () => {
   // 1. Access global context and navigation
-  const { setAuthorized, setPatronId, openKeyboard, showScanner, setShowScanner } = useKiosk();
+  const { setAuthorized, setPatronId, setPatronName, openKeyboard, showScanner, setShowScanner } = useKiosk();
   const navigate = useNavigate();
   const location = useLocation();
   // 2. Logic to determine where to go after login (defaults to /home)
@@ -26,6 +26,8 @@ const LoginPage = () => {
         if (response.success === "true") {
           // Update Global State
           setPatronId(response.patron_id);
+          setPatronName(response.patron_name)
+          console.log(response)
           setAuthorized(true);
 
           Swal.fire({

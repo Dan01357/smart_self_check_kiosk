@@ -11,7 +11,7 @@ function SimpleScanner() {
   const {
     setAuthorized, setPatronId, setShowScanner, patronId,
     setItems, items, setCheckouts, checkouts, biblios, setBiblios, // added 'checkouts' here
-    setDisplayCheckouts, setDisplayCheckins, displayCheckouts
+    setDisplayCheckouts, setDisplayCheckins, displayCheckouts, setPatronName
   } = useKiosk();
 
   const navigate = useNavigate();
@@ -48,6 +48,7 @@ function SimpleScanner() {
       const response = await postDataLogin(String(cardNumber));
       if (response.success === "true") {
         setPatronId(response.patron_id);
+        setPatronName(response.patron_name)
         setAuthorized(true);
         Swal.fire({ title: 'Submitted!', text: `Login successful`, icon: 'success', timer: 1500, showConfirmButton: false });
         navigate("/checkout", { replace: true, state: location.state });

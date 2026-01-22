@@ -9,13 +9,13 @@ import Swal from 'sweetalert2'; // Make sure Swal is imported
 
 const CheckinPage = () => {
   // Destructure the necessary data from context
-  const { 
-    openKeyboard, 
-    displayCheckins, 
-    items, 
-    checkouts, 
-    biblios, 
-    setDisplayCheckins 
+  const {
+    openKeyboard,
+    displayCheckins,
+    items,
+    checkouts,
+    biblios,
+    setDisplayCheckins
   } = useKiosk();
 
   const handleManualEntry = () => {
@@ -75,10 +75,10 @@ const CheckinPage = () => {
       <div className='pt-60 pb-30'>
         <div className="m-auto flex flex-col justify-center items-center overflow-auto">
           <div className="text-[42px] mb-[35px] font-[700]">Place Items on RFID Reader</div>
-          
+
           {/* UPDATED: Calling handleManualEntry instead of empty arrow function */}
-          <div 
-            className="flex flex-col bg-gradient-to-br from-[rgb(30_58_95)] to-[rgb(44_95_158)] py-[50px] px-[200px] items-center rounded-[25px] border border-dashed border-[5px] border-[rgb(52_152_219)] m-[30px] overflow-hidden min-h-[400px] w-[1000px] cursor-pointer" 
+          <div
+            className="flex flex-col bg-gradient-to-br from-[rgb(30_58_95)] to-[rgb(44_95_158)] py-[50px] px-[200px] items-center rounded-[25px] border border-dashed border-[5px] border-[rgb(52_152_219)] m-[30px] overflow-hidden min-h-[400px] w-[1000px] cursor-pointer"
             onClick={handleManualEntry}
           >
             <div className='text-[120px] animate-float relative z-1'>
@@ -87,35 +87,61 @@ const CheckinPage = () => {
               </div>
             </div>
             <div className='font-bold text-[36px] text-white'>Scanning for returns</div>
-            <div className='text-[26px] text-white'>Place books flat on the reader pad below / <br/> Click this panel to enter barcode manually</div>
+            <div className='text-[26px] text-white'>Place books flat on the reader pad below / <br /> Click this panel to enter barcode manually</div>
           </div>
         </div>
 
         <div className='bg-[rgb(236_240_241)] m-[30px] p-[30px] rounded-[15px]'>
           <div className='font-bold text-[rgb(44_62_80)] flex items-center justify-between mb-4'>
             <div className='text-[32px]'>Items Being Returned ({displayCheckins.length})</div>
-            <div className='text-white bg-[#3498db] py-[8px] px-[20px] rounded-[20px] text-[24px]'> 
-              {(displayCheckins.length === 0 || displayCheckins.length === 1) ? `${displayCheckins.length} Item` : `${displayCheckins.length} Items`} 
+            <div className='text-white bg-[#3498db] py-[8px] px-[20px] rounded-[20px] text-[24px]'>
+              {(displayCheckins.length === 0 || displayCheckins.length === 1) ? `${displayCheckins.length} Item` : `${displayCheckins.length} Items`}
             </div>
           </div>
           <div className='flex flex-col gap-5'>
             {displayCheckins.map((item: any, index: number) => {
+              // Synchronize logic: Get the absolute difference and ensure it's at least 1 if overdue
+              const rawDiff = diffInDays(item);
+              const daysLate = Math.max(1, Math.abs(rawDiff));
+
+              // Logic for the three states
+              let statusColor = '#3498db'; // Blue (On time)
+              let statusEmoji = '📘';
+
+              if (item.isOverdue) {
+                if (daysLate >= 4) {
+                  statusColor = '#e74c3c'; // Red (4+ days)
+                  statusEmoji = '📕';
+                } else {
+                  statusColor = '#e67e22'; // Orange (1-3 days)
+                  statusEmoji = '📙';
+                }
+              }
+
               return (
-                <div key={index} className={`flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[5px] ${item.isOverdue ? 'border-l-[#e74c3c]' : 'border-l-[rgb(46_204_113)]'}`}>
-                  <div className='text-[50px] min-w-[50px] mr-5'>{item.isOverdue ? '📕' : '📘'}</div>
+                <div
+                  key={index}
+                  className={`flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[5px]`}
+                  style={{ borderLeftColor: statusColor }}
+                >
+                  <div className='text-[50px] min-w-[50px] mr-5'>{statusEmoji}</div>
+
                   <div>
                     <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{item.title}</div>
                     <div className='text-[20px] text-[rgb(127_140_141)]'>Barcode: {item.barcode}</div>
-                    <div className='text-[20px] text-[rgb(127_140_141)]'>{item.isOverdue
-                      ? `${diffInDays(item) <= 1
-                        ? `1 day overdue`
-                        : `${diffInDays(item)} days overdue`} `
-                      : 'Returned on time'
-                    }</div>
+                    <div className='text-[20px] text-[rgb(127_140_141)]'>
+                      {item.isOverdue
+                        ? `${daysLate} ${daysLate === 1 ? 'day' : 'days'} overdue`
+                        : 'Returned on time'
+                      }
+                    </div>
                   </div>
-                  <div className='text-[rgb(46_204_113)] ml-auto'>{item.isOverdue ? '⚠️' : '✓'}</div>
+
+                  <div className='ml-auto text-[24px]' style={{ color: statusColor }}>
+                    {item.isOverdue ? '⚠️' : '✓'}
+                  </div>
                 </div>
-              )
+              );
             })}
           </div>
         </div>

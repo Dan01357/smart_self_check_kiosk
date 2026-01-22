@@ -4,7 +4,7 @@ import { useKiosk } from "../../context/KioskContext";
 const Header = () => {
   const location = useLocation();
   const path = location.pathname;
-  const { patronId } = useKiosk();
+  const { patronName } = useKiosk();
 
   // This replaces the 'locationBefore' prop for the success page logic
   const fromPath = location.state?.from?.pathname;
@@ -33,7 +33,7 @@ const Header = () => {
     <button className="border border-white border-2 text-[25px] px-7 rounded-[10px] flex items-center hover:bg-white hover:text-[#27ae60] transition-colors duration-300 bg-white/20 mr-4">
       <div className="mr-1">👤</div>
       {/* You can replace 'Patron' with patronId if you want to show the ID */}
-      <div>{patronId ? `Patron ${patronId}` : "John Doe"}</div>
+      <div>{patronName ? patronName : "John Doe"}</div>
     </button>
   );
 
