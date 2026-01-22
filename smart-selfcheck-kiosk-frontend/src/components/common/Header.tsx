@@ -1,17 +1,15 @@
 import { useLocation } from "react-router-dom";
-import { useKiosk } from "../../context/KioskContext";
-
+import { UserBtn } from './UserBtn'
 const Header = () => {
   const location = useLocation();
   const path = location.pathname;
-  const { patronName } = useKiosk();
 
   // This replaces the 'locationBefore' prop for the success page logic
   const fromPath = location.state?.from?.pathname;
 
   // Base Wrapper Style (Exact same as your original)
   const wrapperClass = "fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[1080px] max-h-[1920px] bg-gradient-to-br from-[#667eea] to-[#764ba2] pt-7 pb-28 px-10 z-100";
-  
+
   // Shared Components to keep code clean but styles identical
   const Logo = ({ title }: { title: string }) => (
     <div className="flex items-center font-bold">
@@ -26,14 +24,6 @@ const Header = () => {
     <button className="border border-white border-2 text-[25px] px-7 rounded-[10px] flex items-center hover:bg-white hover:text-[#27ae60] transition-colors duration-300 bg-white/20">
       <div className="mr-1">❓</div>
       <div>Help</div>
-    </button>
-  );
-
-  const UserBtn = () => (
-    <button className="border border-white border-2 text-[25px] px-7 rounded-[10px] flex items-center hover:bg-white hover:text-[#27ae60] transition-colors duration-300 bg-white/20 mr-4">
-      <div className="mr-1">👤</div>
-      {/* You can replace 'Patron' with patronId if you want to show the ID */}
-      <div>{patronName ? patronName : "John Doe"}</div>
     </button>
   );
 
@@ -117,7 +107,7 @@ const Header = () => {
   if (path === '/success') {
     // Determine title based on where they came from
     const successTitle = fromPath === '/checkin' ? "Return Complete" : "Checkout Complete";
-    
+
     return (
       <div className={wrapperClass}>
         <div className="flex text-white justify-between">

@@ -36,7 +36,7 @@ const HomePage = () => {
               </div>
             </button>
           </Link>
-
+       
           <Link to="/checkin">
             <button className="bg-gradient-to-br from-[#667eea] to-[#764ba2] w-[900px] py-[60px] px-[40px] rounded-[20px] hover:-translate-y-[5px] hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)] transition-all duration-300">
               <div className="flex items-center">
