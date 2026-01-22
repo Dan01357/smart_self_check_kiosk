@@ -36,7 +36,7 @@ export const UserBtn = () => {
       >
         <div className="flex items-center">
           <div className="mr-2">👤</div>
-          <div className="font-semibold whitespace-nowrap">{patronName ? patronName : "John Doe"}</div>
+          <div className="font-semibold whitespace-nowrap truncate max-w-[250px] inline-block">{patronName ? patronName : "John Doe"}</div>
         </div>
         <div className={`ml-3 text-[18px] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
           ▼

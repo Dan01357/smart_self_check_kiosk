@@ -12,7 +12,7 @@ const Header = () => {
 
   // Shared Components to keep code clean but styles identical
   const Logo = ({ title }: { title: string }) => (
-    <div className="flex items-center font-bold">
+    <div className="flex items-center font-bold flex-shrink-0 whitespace-nowrap ">
       <div className="bg-white px-3 rounded-[8px] mr-3">
         <div className="text-[40px]">📚</div>
       </div>
@@ -80,9 +80,9 @@ const Header = () => {
   if (path === '/checkout') {
     return (
       <div className={wrapperClass}>
-        <div className="flex text-white justify-between">
+        <div className="flex text-white justify-between items-center">
           <Logo title="Checkout Mode" />
-          <div className="flex">
+          <div className="flex items-center justify-end min-w-0 gap-4">
             <UserBtn />
             <HelpBtn />
           </div>
