@@ -26,12 +26,16 @@ interface KioskContextType {
   setDisplayCheckins: React.Dispatch<React.SetStateAction<any[]>>;
   setPatronName: React.Dispatch<React.SetStateAction<string>>;
   patronName: string;
+  handleLoginSuccess:()=>void;
 }
 
 const KioskContext = createContext<KioskContextType | undefined>(undefined);
 
 export const KioskProvider = ({ children }: { children: ReactNode }) => {
-  const [authorized, setAuthorized] = useState<boolean>(false);
+  const [authorized, setAuthorized] = useState<boolean>(() => {
+    return localStorage.getItem("kiosk_auth") === "true";
+  });
+
   const [patronId, setPatronId] = useState<number>(0);
   const [patronName, setPatronName] = useState<string>('');
 
@@ -64,6 +68,11 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
     setIsKeyboardOpen(false);
     setShowScanner(false);
   };
+  const handleLoginSuccess = () => {
+    setAuthorized(true);
+    localStorage.setItem("kiosk_auth", "true");
+  }
+
 
   const openKeyboard = (onDone: (val: number) => void) => {
     setKeyboardCallback(() => onDone);
@@ -72,13 +81,14 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
 
   const closeKeyboard = () => setIsKeyboardOpen(false);
 
+
   return (
     <KioskContext.Provider value={{
       authorized, setAuthorized, patronId, setPatronId, logout,
       isKeyboardOpen, openKeyboard, closeKeyboard, keyboardCallback,
       checkouts, setCheckouts, biblios, setBiblios, items, setItems,
       displayCheckouts, setDisplayCheckouts, showScanner, setShowScanner,
-      displayCheckins, setDisplayCheckins, patronName, setPatronName
+      displayCheckins, setDisplayCheckins, patronName, setPatronName, handleLoginSuccess
     }}>
       {children}
     </KioskContext.Provider>

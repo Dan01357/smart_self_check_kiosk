@@ -10,16 +10,18 @@ import NotFound from "./pages/NotFound";
 import KeyboardPad from "./components/common/KeyboardPad";
 import MyQRCode from "./pages/Qr";
 import RenewItemsPage from "./pages/RenewItemsPage";
+import PublicRoute from "./components/auth/PublicRoute";
 // import Try from "./Try";
 
 function App() {
   return (
     <>
       <Routes>
-        {/* Public Route */}
- 
-        <Route path="/" element={<LoginPage />} />
-        <Route path="/qr" element={<MyQRCode />}/>
+        {/* Guest only routes (Redirect to /home if already logged in) */}
+        <Route element={<PublicRoute />}>
+          <Route path="/" element={<LoginPage />} />
+          <Route path="/qr" element={<MyQRCode />} />
+        </Route>
         {/* Protected Routes (Wrapper) */}
         <Route element={<ProtectedRoute />}>
           <Route path="/home" element={<HomePage />} />
@@ -27,7 +29,7 @@ function App() {
           <Route path="/success" element={<SuccessPage />} />
           <Route path="/checkin" element={<CheckinPage />} />
           <Route path="/account" element={<AccountPage />} />
-           <Route path="/renew" element={<RenewItemsPage />} />
+          <Route path="/renew" element={<RenewItemsPage />} />
         </Route>
 
         {/* 404 */}
