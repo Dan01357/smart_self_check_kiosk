@@ -81,6 +81,8 @@ const Footer = () => {
     }
   };
 
+  // ... (inside Footer component)
+
   const handleFinalCheckout = async () => {
     if (displayCheckouts.length === 0) return;
 
@@ -91,7 +93,20 @@ const Footer = () => {
     });
 
     try {
-      // Process all staged checkouts
+      // 1. PRE-VALIDATION: Fetch latest items status to ensure none were checked out 
+      // while the user was standing at the kiosk.
+      const { data: latestItems } = await axios.get(`${API_BASE}/api/v1/items`);
+
+      for (const stagedItem of displayCheckouts) {
+        const dbItem = latestItems.find((i: any) => i.item_id === stagedItem.item_id);
+
+        // If the item has a checkout_id or an 'onloan' date, it's already taken
+        if (dbItem && (dbItem.checkout_id || dbItem.onloan)) {
+          throw new Error(`The item "${stagedItem.title}" is already checked out by someone else.`);
+        }
+      }
+
+      // 2. TRANSACTION: Only if ALL items passed validation do we proceed
       for (const item of displayCheckouts) {
         await checkoutBook(patronId, item.item_id);
       }
@@ -100,7 +115,9 @@ const Footer = () => {
       navigate("/success", { state: { from: path } });
     } catch (error: any) {
       console.error("Checkout Error:", error);
-      const errorMessage = error.response?.data?.error || "A book has already been checked out.";
+      // This message now triggers BEFORE any database changes are made if validation fails
+      const errorMessage = "A book has already been checked out";
+
       Swal.fire({ title: 'Checkout Error', text: errorMessage, icon: 'error' });
     }
   };
@@ -211,7 +228,7 @@ const Footer = () => {
             className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300"
             onClick={handleFinalCheckin}
           >
-            <div>✓ Complete Checkout</div>
+            <div>✓ Complete Return</div>
           </button>
         }
       </div>

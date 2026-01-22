@@ -60,51 +60,54 @@ function SimpleScanner() {
     }
   };
 
-  const handleCheckoutLogic = useCallback(async (barcodeValue: string) => {
-    const itemData: any = items.find((item: any) => barcodeValue === item.external_id);
+  // ... (inside SimpleScanner component, update handleCheckoutLogic)
 
-    if (!itemData) {
-      return Swal.fire({
-        title: 'Not Found',
-        text: 'The barcode scanned was not found in the system.',
-        icon: 'warning',
-        confirmButtonText: 'OK'
-      });
-    }
+const handleCheckoutLogic = useCallback(async (barcodeValue: string) => {
+  const itemData: any = items.find((item: any) => barcodeValue === item.external_id);
 
-    if (displayCheckouts.some((i: any) => i.externalId === barcodeValue)) {
-      return Swal.fire({ title: 'Already Added', icon: 'info', timer: 1000, showConfirmButton: false });
-    }
+  if (!itemData) {
+    return Swal.fire({ title: 'Not Found', text: 'The barcode scanned was not found in the system.', icon: 'warning' });
+  }
 
-    const biblio: any = biblios.find((b: any) => b.biblio_id === itemData.biblio_id);
-
-    // --- CALCULATE ESTIMATED DUE DATE (e.g., 14 Days from now) ---
-    const estDate = new Date();
-    estDate.setDate(estDate.getDate() + 14);
-    const formattedEstDue = estDate.toLocaleDateString('en-US', {
-      month: 'short',
-      day: '2-digit',
-      year: 'numeric'
+  // NEW: Check if the item is already checked out (onloan) in the system
+  if (itemData.checkout_id || itemData.onloan) {
+    return Swal.fire({ 
+      title: 'Action Denied', 
+      text: `"${itemData.external_id}" is already checked out.`, 
+      icon: 'error' 
     });
+  }
 
-    const newSessionItem = {
-      item_id: itemData.item_id,
-      title: biblio?.title || "Unknown Title",
-      externalId: itemData.external_id || "No Barcode",
-      dueDate: formattedEstDue, // Displays the calculated date instead of "Pending"
-      checkoutDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-    };
+  if (displayCheckouts.some((i: any) => i.externalId === barcodeValue)) {
+    return Swal.fire({ title: 'Already Added', icon: 'info', timer: 1000, showConfirmButton: false });
+  }
 
-    setDisplayCheckouts((prev: any) => [newSessionItem, ...prev]);
+  const biblio: any = biblios.find((b: any) => b.biblio_id === itemData.biblio_id);
 
-    Swal.fire({
-      title: 'Added!',
-      text: `${newSessionItem.title} added to list`,
-      icon: 'success',
-      timer: 1500,
-      showConfirmButton: false
-    });
-  }, [items, biblios, displayCheckouts]);
+  const estDate = new Date();
+  estDate.setDate(estDate.getDate() + 14);
+  const formattedEstDue = estDate.toLocaleDateString('en-US', {
+    month: 'short', day: '2-digit', year: 'numeric'
+  });
+
+  const newSessionItem = {
+    item_id: itemData.item_id,
+    title: biblio?.title || "Unknown Title",
+    externalId: itemData.external_id || "No Barcode",
+    dueDate: formattedEstDue,
+    checkoutDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+  };
+
+  setDisplayCheckouts((prev: any) => [newSessionItem, ...prev]);
+
+  Swal.fire({
+    title: 'Added!',
+    text: `${newSessionItem.title} added to list`,
+    icon: 'success',
+    timer: 1500,
+    showConfirmButton: false
+  });
+}, [items, biblios, displayCheckouts]);
 
   const handleCheckinLogic = useCallback(async (barcodeValue: string) => {
     const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
