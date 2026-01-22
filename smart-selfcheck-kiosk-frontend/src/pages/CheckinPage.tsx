@@ -80,7 +80,7 @@ const CheckinPage = () => {
       };
 
       setDisplayCheckins((prev: any) => [newReturn, ...prev]);
-      Swal.fire({ title: 'Added!', text: 'Item added to return list', icon: 'success', timer: 1500, showConfirmButton: false });
+      Swal.fire({ title: 'Added!', text:  `${newReturn.title} added to return list`, icon: 'success', timer: 1500, showConfirmButton: false });
     });
   };
 

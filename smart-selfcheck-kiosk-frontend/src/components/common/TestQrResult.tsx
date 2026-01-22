@@ -101,8 +101,8 @@ const handleCheckoutLogic = useCallback(async (barcodeValue: string) => {
   setDisplayCheckouts((prev: any) => [newSessionItem, ...prev]);
 
   Swal.fire({
-    title: 'Added!',
-    text: `${newSessionItem.title} added to list`,
+    title: 'Scanned',
+    text: `${newSessionItem.title} added to checkout list`,
     icon: 'success',
     timer: 1500,
     showConfirmButton: false
@@ -137,7 +137,7 @@ const handleCheckoutLogic = useCallback(async (barcodeValue: string) => {
     };
 
     setDisplayCheckins((prev: any) => [newReturn, ...prev]);
-    Swal.fire({ title: 'Scanned', text: 'Item added to return list', icon: 'success', timer: 1000, showConfirmButton: false });
+    Swal.fire({ title: 'Scanned', text:  `${newReturn.title} added to return list`, icon: 'success', timer: 1000, showConfirmButton: false });
 
     // CRITICAL: Added displayCheckins to dependencies so the scanner knows what's already in the list
   }, [items, biblios, checkouts, displayCheckins]);

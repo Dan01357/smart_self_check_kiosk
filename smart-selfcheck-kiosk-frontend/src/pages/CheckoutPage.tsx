@@ -59,8 +59,8 @@ const CheckoutPage = () => {
         setDisplayCheckouts((prev: any) => [newSessionItem, ...prev]);
 
         Swal.fire({
-          title: 'Added!',
-          text: `${newSessionItem.title} added to list`,
+          title: 'Scanned',
+          text: `${newSessionItem.title} added to checkout list`,
           icon: 'success',
           timer: 1500,
           showConfirmButton: false
