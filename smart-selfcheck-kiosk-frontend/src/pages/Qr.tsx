@@ -1,7 +1,7 @@
 import { QRCodeSVG } from 'qrcode.react';
 
 const MyQRCode = () => {
-  const valueToEncode = "12345678" + "\n";
+  const valueToEncode = "44" + "\n";
 
   return (
     <div style={{ padding: '40px', background: 'white', display: 'inline-block' }}>

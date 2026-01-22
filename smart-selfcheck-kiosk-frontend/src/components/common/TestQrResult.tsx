@@ -11,7 +11,7 @@ function SimpleScanner() {
   const {
     setAuthorized, setPatronId, setShowScanner, patronId,
     setItems, items, setCheckouts, checkouts, biblios, setBiblios, // added 'checkouts' here
-    setDisplayCheckouts, setDisplayCheckins, displayCheckouts, setPatronName
+    setDisplayCheckouts, setDisplayCheckins, displayCheckouts, setPatronName, displayCheckins
   } = useKiosk();
 
   const navigate = useNavigate();
@@ -113,17 +113,16 @@ function SimpleScanner() {
       return Swal.fire({ title: 'Not Found', text: 'The barcode scanned was not found in the system.', icon: 'warning' });
     }
 
-    const currentCheckout = checkouts.find((c: any) => c.item_id === itemData.item_id);
-
-    if (!currentCheckout) {
-      return Swal.fire({
-        title: 'Action Denied',
-        text: 'This book is not in your checkout list.',
-        icon: 'error'
-      });
+    // PREVENT DUPLICATE (Logic based on Checkout Page)
+    if (displayCheckins.some((i: any) => i.barcode === barcodeValue)) {
+      return Swal.fire({ title: 'Already Added', icon: 'info', timer: 1000, showConfirmButton: false });
     }
 
-    // Only check if it's overdue for the UI display
+    const currentCheckout = checkouts.find((c: any) => c.item_id === itemData.item_id);
+    if (!currentCheckout) {
+      return Swal.fire({ title: 'Action Denied', text: 'This book is not in your checkout list.', icon: 'error' });
+    }
+
     const isActuallyOverdue = new Date(currentCheckout.due_date) < new Date();
     const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
 
@@ -134,18 +133,11 @@ function SimpleScanner() {
       dueDate: currentCheckout.due_date
     };
 
-    // Update the UI list ONLY (Do not call /api/checkin yet)
     setDisplayCheckins((prev: any) => [newReturn, ...prev]);
+    Swal.fire({ title: 'Scanned', text: 'Item added to return list', icon: 'success', timer: 1000, showConfirmButton: false });
 
-    Swal.fire({
-      title: 'Scanned',
-      text: 'Item added to return list',
-      icon: 'success',
-      timer: 1000,
-      showConfirmButton: false
-    });
-  }, [items, biblios, checkouts]);
-
+    // CRITICAL: Added displayCheckins to dependencies so the scanner knows what's already in the list
+  }, [items, biblios, checkouts, displayCheckins]);
   // --- Hardware Event Listener ---
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {

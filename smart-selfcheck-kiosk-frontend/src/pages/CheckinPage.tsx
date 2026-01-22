@@ -20,31 +20,25 @@ const CheckinPage = () => {
 
   const handleManualEntry = () => {
     openKeyboard((barcodeValue) => {
-      // 1. Find the item in the global items list
+      // 1. Find the item
       const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
 
       if (!itemData) {
-        return Swal.fire({
-          title: 'Not Found',
-          text: 'The barcode entered was not found in the system.',
-          icon: 'warning',
-          confirmButtonText: 'OK'
-        });
+        return Swal.fire({ title: 'Not Found', text: 'The barcode scanned was not found in the system.', icon: 'warning' });
       }
 
-      // 2. CHECK: Does this item exist in the current patron's checkout list?
+      // 2. PREVENT DUPLICATE (Logic based on Checkout Page)
+      if (displayCheckins.some((i: any) => i.barcode === barcodeValue)) {
+        return Swal.fire({ title: 'Already Added', icon: 'info', timer: 1000, showConfirmButton: false });
+      }
+
+      // 3. CHECK: Does this item exist in the current patron's checkout list?
       const currentCheckout = checkouts.find((c: any) => c.item_id === itemData.item_id);
-
       if (!currentCheckout) {
-        return Swal.fire({
-          title: 'Action Denied',
-          text: 'This book is not in your checkout list. You can only return items you personally borrowed.',
-          icon: 'error',
-          confirmButtonText: 'OK'
-        });
+        return Swal.fire({ title: 'Action Denied', text: 'This book is not in your checkout list.', icon: 'error' });
       }
 
-      // 3. Logic for overdue calculation
+      // ... (rest of your logic for newReturn and setDisplayCheckins)
       const isActuallyOverdue = new Date(currentCheckout.due_date) < new Date();
       const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
 
@@ -55,16 +49,8 @@ const CheckinPage = () => {
         dueDate: currentCheckout.due_date
       };
 
-      // 4. Update the UI list (Delayed Commit - no API call yet)
       setDisplayCheckins((prev: any) => [newReturn, ...prev]);
-
-      Swal.fire({
-        title: 'Added!',
-        text: 'Item added to return list',
-        icon: 'success',
-        timer: 1500,
-        showConfirmButton: false
-      });
+      Swal.fire({ title: 'Added!', text: 'Item added to return list', icon: 'success', timer: 1500, showConfirmButton: false });
     });
   };
 
