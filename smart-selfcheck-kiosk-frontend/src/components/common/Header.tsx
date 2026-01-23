@@ -132,6 +132,19 @@ const Header = () => {
       </div>
     );
   }
+
+  if (path === '/hold') {
+    return (
+      <div className={wrapperClass}>
+        <div className="flex text-white justify-between">
+          <Logo title="Reservation Mode" />
+          <div className="flex">
+            <HelpBtn />
+          </div>
+        </div>
+      </div>
+    );
+  }
   return null;
 };
 

@@ -36,7 +36,7 @@ const HomePage = () => {
               </div>
             </button>
           </Link>
-       
+
           <Link to="/checkin">
             <button className="bg-gradient-to-br from-[#667eea] to-[#764ba2] w-[900px] py-[60px] px-[40px] rounded-[20px] hover:-translate-y-[5px] hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)] transition-all duration-300">
               <div className="flex items-center">
@@ -57,8 +57,21 @@ const HomePage = () => {
                   <div className="text-[80px]">🔄</div>
                 </div>
                 <div className="flex flex-col items-start">
-                  <div className="text-[35px] text-white font-bold">Renew Items</div>
+                  <div className="text-[35px] text-white font-bold">Renew Books</div>
                   <div className="text-[22px] text-white">Extend your due dates</div>
+                </div>
+              </div>
+            </button>
+          </Link>
+          <Link to="/hold">
+            <button className="bg-gradient-to-br from-[#667eea] to-[#764ba2] w-[900px] py-[60px] px-[40px] rounded-[20px] hover:-translate-y-[5px] hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)] transition-all duration-300">
+              <div className="flex items-center">
+                <div className="pr-5 text-white">
+                  <div className="text-[80px]">📌</div>
+                </div>
+                <div className="flex flex-col items-start">
+                  <div className="text-[35px] text-white font-bold">My Holds</div>
+                  <div className="text-[22px] text-white">View and manage your reservations</div>
                 </div>
               </div>
             </button>

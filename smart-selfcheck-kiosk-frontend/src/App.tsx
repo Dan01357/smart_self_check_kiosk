@@ -11,6 +11,7 @@ import KeyboardPad from "./components/common/KeyboardPad";
 import MyQRCode from "./pages/Qr";
 import RenewItemsPage from "./pages/RenewItemsPage";
 import PublicRoute from "./components/auth/PublicRoute";
+import HoldsPage from "./pages/HoldsPage";
 // import Try from "./Try";
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/success" element={<SuccessPage />} />
           <Route path="/checkin" element={<CheckinPage />} />
+          <Route path="/hold" element={<HoldsPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/renew" element={<RenewItemsPage />} />
         </Route>

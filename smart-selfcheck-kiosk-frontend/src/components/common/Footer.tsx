@@ -325,7 +325,19 @@ const Footer = () => {
       </div>
     );
   }
+  else if (path === '/hold') {
+    return (
+      <div className={wrapperClass}>
+        <Link to="/home">
+          <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" >
+            <div className="mr-2">🏠</div>
+            <div>Done</div>
+          </button>
+        </Link>
 
+      </div>
+    );
+  }
   return null;
 }
 

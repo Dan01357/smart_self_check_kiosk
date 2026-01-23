@@ -151,7 +151,7 @@ app.post("/api/v1/auth/login", async (req, res) => {
         // Safety check: ensure patrons is an array
         const patronList = Array.isArray(patrons) ? patrons : [];
         const authorized = patronList.find(p => p.cardnumber === cardnumber);
-        
+
         if (authorized) {
             console.log(`Login Success: ${cardnumber}`);
             res.json({
@@ -199,7 +199,7 @@ app.post("/api/v1/checkouts", async (req, res) => {
 // 4. Get Checkouts (For UI History)
 app.get(`/api/v1/checkouts`, async (req, res) => {
     const { patronId } = await req.query
-    console.log(patronId)
+
     const data = await safeKohaGet(`/patrons/${patronId}/checkouts`);
     res.json(data);
 });
@@ -244,6 +244,14 @@ app.post("/api/v1/renew", async (req, res) => {
         const kohaError = error.response?.data?.error || "Koha API Error";
         res.status(error.response?.status || 500).json({ error: kohaError });
     }
+});
+
+//Holds
+app.get('/api/v1/holds', async (req, res) => {
+    const { patronId } = await req.query
+
+    const data = await safeKohaGet(`/patrons/${patronId}/holds`);
+    res.json(data);
 });
 
 // --- START SERVER ---

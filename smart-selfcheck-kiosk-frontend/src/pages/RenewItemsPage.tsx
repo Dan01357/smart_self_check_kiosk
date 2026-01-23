@@ -95,7 +95,7 @@ const RenewItemsPage = () => {
       <Header />
 
       <div className='pt-60 flex p-[40px] flex-col overflow-auto pb-30'>
-        <div className='text-center text-[42px] mb-[35px] text-[#2c3e50] font-bold'>Renew Items</div>
+        <div className='text-center text-[42px] mb-[35px] text-[#2c3e50] font-bold'>Renew Books</div>
 
         {/* --- STATUS SUMMARY CARD --- */}
         <div className='bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[40px] text-white mb-[30px] shadow-lg'>
