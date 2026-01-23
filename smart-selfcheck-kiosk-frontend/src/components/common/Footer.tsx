@@ -107,12 +107,26 @@ const Footer = () => {
       }
 
       // 2. TRANSACTION: Only if ALL items passed validation do we proceed
-      for (const item of displayCheckouts) {
-        await checkoutBook(patronId, item.item_id);
+      const allValidated = displayCheckouts.every(displayCheckout =>
+        // Ensure that for every display item, there is NOT a matching item in checkouts
+        !checkouts.some(checkout => checkout.item_id === displayCheckout.item_id)
+      );
+
+      if (allValidated) {
+        for (const item of displayCheckouts) {
+          await checkoutBook(patronId, item.item_id);
+        }
+
+        Swal.close();
+        navigate("/success", { state: { from: path } });
+      }
+      else {
+        const errorMessage = "A book has already been checked out";
+
+        Swal.fire({ title: 'Checkout Error', text: errorMessage, icon: 'error' });
       }
 
-      Swal.close();
-      navigate("/success", { state: { from: path } });
+
     } catch (error: any) {
       console.error("Checkout Error:", error);
       // This message now triggers BEFORE any database changes are made if validation fails
