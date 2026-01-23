@@ -130,6 +130,7 @@ const handleCheckoutLogic = useCallback(async (barcodeValue: string) => {
     const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
 
     const newReturn = {
+      biblioId:biblio.biblio_id,
       title: biblio?.title || "Unknown Title",
       barcode: barcodeValue,
       isOverdue: isActuallyOverdue,

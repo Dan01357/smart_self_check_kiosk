@@ -20,7 +20,7 @@ const CheckinPage = () => {
     setCheckouts,
     setBiblios,
     setItems,
-    patronId,
+    patronId
   } = useKiosk();
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -53,6 +53,7 @@ const CheckinPage = () => {
     fetchItems();
   }, [patronId, API_BASE, setCheckouts, setBiblios, setItems]);
 
+
   const handleManualEntry = () => {
     openKeyboard((barcodeValue) => {
       const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
@@ -73,6 +74,7 @@ const CheckinPage = () => {
       const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
 
       const newReturn = {
+        biblioId:biblio.biblio_id,
         title: biblio?.title || "Unknown Title",
         barcode: barcodeValue,
         isOverdue: isActuallyOverdue,

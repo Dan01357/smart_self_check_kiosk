@@ -3,11 +3,12 @@ import { useKiosk } from "../../context/KioskContext";
 import Swal from "sweetalert2";
 import axios from "axios";
 import { checkoutBook } from "../../services/kohaApi";
+import { useEffect } from "react";
 
 const Footer = () => {
   const location = useLocation();
   const path = location.pathname;
-  const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts, setDisplayCheckins, setDisplayCheckouts } = useKiosk()
+  const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts, setDisplayCheckins, setDisplayCheckouts, setHolds, holds } = useKiosk()
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
   // This replaces the locationBefore prop by reading the state passed during navigation
   const locationBefore = location.state?.from;
@@ -55,30 +56,59 @@ const Footer = () => {
   };
   const navigate = useNavigate();
 
+  useEffect(() => {
+    // 1. Fetch Holds Data
+    const fetchHolds = async () => {
+      try {
+        // Note: This endpoint should join hold data with biblio/title data in your Express backend
+        const response = await axios.get(`${API_BASE}/api/v1/holds`);
+        setHolds(response.data);
+      } catch (e) {
+        console.error("Holds fetch failed", e);
+      } finally {
+      }
+    };
+    fetchHolds();
+  }, []);
+
+  console.log(displayCheckins, holds)
   const handleFinalCheckin = async () => {
-    Swal.fire({
-      title: 'Processing Returns...',
-      didOpen: () => Swal.showLoading(),
-      allowOutsideClick: false
-    });
 
-    try {
-      // Perform the actual checkins only now
-      const promises = displayCheckins.map(item =>
-        fetch(`${API_BASE}/api/checkin`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ barcode: item.barcode })
-        })
-      );
+    const allValidated = displayCheckins.every(displayCheckin =>
 
-      await Promise.all(promises);
-      // Clear state and navigate
-      navigate("/success", { state: { from: path } });
-      Swal.close();
-    } catch (error) {
-      Swal.fire({ title: 'Error', text: 'Some items failed to return.', icon: 'error' });
+      !holds.some(hold => hold.biblio_id === displayCheckin.biblioId)
+    );
+
+    if (allValidated) {
+      Swal.fire({
+        title: 'Processing Returns...',
+        didOpen: () => Swal.showLoading(),
+        allowOutsideClick: false
+      });
+
+      try {
+        // Perform the actual checkins only now
+        const promises = displayCheckins.map(item =>
+          fetch(`${API_BASE}/api/checkin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ barcode: item.barcode })
+          })
+        );
+
+        await Promise.all(promises);
+        // Clear state and navigate
+        navigate("/success", { state: { from: path } });
+        Swal.close();
+      } catch (error) {
+        Swal.fire({ title: 'Error', text: 'Some items failed to return.', icon: 'error' });
+      }
     }
+    else {
+      navigate("/onholddetected")
+    }
+
+
   };
 
   // ... (inside Footer component)
