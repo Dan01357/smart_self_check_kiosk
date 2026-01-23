@@ -130,9 +130,9 @@ const Footer = () => {
     } catch (error: any) {
       console.error("Checkout Error:", error);
       // This message now triggers BEFORE any database changes are made if validation fails
-      const errorMessage = "A book has already been checked out";
+      const errorMessage = "A book is already reserved by another patron";
 
-      Swal.fire({ title: 'Checkout Error', text: errorMessage, icon: 'error' });
+      Swal.fire({ title: 'Book on Hold', text: errorMessage, icon: 'error' });
     }
   };
 
