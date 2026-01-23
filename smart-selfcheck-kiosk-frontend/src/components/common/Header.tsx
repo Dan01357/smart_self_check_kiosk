@@ -4,9 +4,11 @@ const Header = () => {
   const location = useLocation();
   const path = location.pathname;
 
+  
   // This replaces the 'locationBefore' prop for the success page logic
-  const fromPath = location.state?.from?.pathname;
+  const fromPath = location.state?.from;
 
+  console.log(fromPath)
   // Base Wrapper Style (Exact same as your original)
   const wrapperClass = "fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[1080px] max-h-[1920px] bg-gradient-to-br from-[#667eea] to-[#764ba2] pt-7 pb-28 px-10 z-100";
 
@@ -106,6 +108,7 @@ const Header = () => {
 
   if (path === '/success') {
     // Determine title based on where they came from
+    console.log(fromPath)
     const successTitle = fromPath === '/checkin' ? "Return Complete" : "Checkout Complete";
 
     return (
