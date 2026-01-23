@@ -188,6 +188,7 @@ const Footer = () => {
 
   else if (path === '/checkout') {
     const isListEmpty = displayCheckouts.length === 0;
+   
     return (
       <div className={wrapperClass}>
         {/* CANCEL: Just go home. No API calls = No trace in Koha */}

@@ -17,10 +17,11 @@ const CheckoutPage = () => {
     items,
     displayCheckouts,
     setDisplayCheckouts,
-    openKeyboard
+    openKeyboard,
   } = useKiosk();
 
   const navigate = useNavigate();
+
 
   // Security Check based on LocalStorage data
   useEffect(() => {
@@ -75,7 +76,6 @@ const CheckoutPage = () => {
       }
     });
   };
-
   return (
     <div className='max-w-[1080px] min-h-[1920px] m-auto border-x border-x-solid border-x-gray-700'>
       <Header />

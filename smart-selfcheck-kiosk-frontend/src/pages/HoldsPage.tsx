@@ -8,8 +8,8 @@ import { formatDate } from '../utils/formatDate';
 import Swal from 'sweetalert2';
 
 const HoldsPage = () => {
-  const { patronId, biblios } = useKiosk();
-  const [holds, setHolds] = useState<any[]>([]);
+  const { patronId, biblios, holds, setHolds } = useKiosk();
+
   const [loading, setLoading] = useState(true);
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
 
@@ -43,7 +43,7 @@ const HoldsPage = () => {
     confirmButtonText: 'Yes, Cancel it',
     cancelButtonText: 'No, Keep it'
   });
-
+  
   if (result.isConfirmed) {
     Swal.showLoading(); // Show loading while waiting for backend
     try {

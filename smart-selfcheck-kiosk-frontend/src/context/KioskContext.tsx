@@ -26,6 +26,8 @@ interface KioskContextType {
   setPatronName: React.Dispatch<React.SetStateAction<string>>;
   patronName: string;
   handleLoginSuccess: () => void;
+  holds:any[];
+  setHolds:React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 const KioskContext = createContext<KioskContextType | undefined>(undefined);
@@ -38,14 +40,16 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
   const [checkouts, setCheckouts] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_checkouts") || "[]"));
   const [biblios, setBiblios] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_biblios") || "[]"));
   const [items, setItems] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_items") || "[]"));
-  
+
   // PERSIST SCANNED ITEMS: Initialize from local storage instead of empty array
-  const [displayCheckouts, setDisplayCheckouts] = useState<any[]>(() => 
+  const [displayCheckouts, setDisplayCheckouts] = useState<any[]>(() =>
     JSON.parse(localStorage.getItem("kiosk_display_checkouts") || "[]")
   );
-  const [displayCheckins, setDisplayCheckins] = useState<any[]>(() => 
+  const [displayCheckins, setDisplayCheckins] = useState<any[]>(() =>
     JSON.parse(localStorage.getItem("kiosk_display_checkins") || "[]")
   );
+
+  const [holds, setHolds] = useState<any[]>([]);
 
   const [showScanner, setShowScanner] = useState(false);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
@@ -58,7 +62,7 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem("kiosk_checkouts", JSON.stringify(checkouts));
     localStorage.setItem("kiosk_biblios", JSON.stringify(biblios));
     localStorage.setItem("kiosk_items", JSON.stringify(items));
-    
+
     // Save the UI display lists so they survive refresh
     localStorage.setItem("kiosk_display_checkouts", JSON.stringify(displayCheckouts));
     localStorage.setItem("kiosk_display_checkins", JSON.stringify(displayCheckins));
@@ -75,7 +79,7 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
     setDisplayCheckins([]);
     setIsKeyboardOpen(false);
     setShowScanner(false);
-    localStorage.clear(); 
+    localStorage.clear();
   };
 
   const handleLoginSuccess = () => {
@@ -96,7 +100,7 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
       isKeyboardOpen, openKeyboard, closeKeyboard, keyboardCallback,
       checkouts, setCheckouts, biblios, setBiblios, items, setItems,
       displayCheckouts, setDisplayCheckouts, showScanner, setShowScanner,
-      displayCheckins, setDisplayCheckins, patronName, setPatronName, handleLoginSuccess
+      displayCheckins, setDisplayCheckins, patronName, setPatronName, handleLoginSuccess, holds, setHolds
     }}>
       {children}
     </KioskContext.Provider>
