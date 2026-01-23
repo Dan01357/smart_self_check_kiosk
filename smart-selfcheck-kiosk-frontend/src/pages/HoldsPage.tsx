@@ -33,20 +33,26 @@ const HoldsPage = () => {
 
   // 2. Handle Cancel Hold
   const handleCancelHold = async (holdId: number, title: string) => {
-    const result = await Swal.fire({
-      title: 'Cancel Hold?',
-      text: `Are you sure you want to remove your reservation for "${title}"?`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#e74c3c',
-      cancelButtonColor: '#95a5a6',
-      confirmButtonText: 'Yes, Cancel it',
-      cancelButtonText: 'No, Keep it'
-    });
+  const result = await Swal.fire({
+    title: 'Cancel Hold?',
+    text: `Are you sure you want to remove your reservation for "${title}"?`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#e74c3c',
+    cancelButtonColor: '#95a5a6',
+    confirmButtonText: 'Yes, Cancel it',
+    cancelButtonText: 'No, Keep it'
+  });
 
-    if (result.isConfirmed) {
-      try {
-        await axios.delete(`${API_BASE}/api/v1/holds/${holdId}`);
+  if (result.isConfirmed) {
+    Swal.showLoading(); // Show loading while waiting for backend
+    try {
+      // Calling our new DELETE route
+      const response = await axios.delete(`${API_BASE}/api/v1/holds`, {
+        params: { holdId: holdId } // This sends ?holdId=5
+      });
+
+      if (response.data) {
         Swal.fire({
           title: 'Cancelled',
           text: 'Your hold has been removed.',
@@ -54,12 +60,18 @@ const HoldsPage = () => {
           timer: 2000,
           showConfirmButton: false
         });
-        fetchHolds(); // Refresh list
-      } catch (error) {
-        Swal.fire('Error', 'Could not cancel hold. Please see staff.', 'error');
+        fetchHolds(); // Refresh the list
       }
+    } catch (error: any) {
+      console.error("Cancellation error", error);
+      Swal.fire({
+        title: 'Error',
+        text: error.response?.data?.error || 'Could not cancel hold. It may have already been processed.',
+        icon: 'error'
+      });
     }
-  };
+  }
+};
 
   // Helper to determine status color/text
   const getStatusDisplay = (hold: any) => {
@@ -113,7 +125,7 @@ const HoldsPage = () => {
                       <div className='text-[20px] text-[#7f8c8d] mb-2'>
                         Placed on: {formatDate(hold.hold_date)}
                       </div>
-                      
+
                       {/* Status Badge */}
                       <span className={`${status.color} text-white px-4 py-1 rounded-full text-[18px] font-bold`}>
                         {status.label}

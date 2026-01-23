@@ -134,6 +134,7 @@ async function safeKohaGet(endpoint) {
     }
 }
 
+
 // --- ROUTES ---
 
 // 1. Get Patrons
@@ -254,6 +255,41 @@ app.get('/api/v1/holds', async (req, res) => {
     res.json(data);
 });
 
+// --- DELETE (CANCEL) HOLD ROUTE ---
+app.delete('/api/v1/holds', async (req, res) => {
+    // Get holdId from query string (from frontend ?holdId=...)
+    const { holdId } = req.query;
+
+    if (!holdId) {
+        return res.status(400).json({ error: "Missing holdId" });
+    }
+
+    try {
+        console.log(`Attempting to cancel Hold ID: ${holdId}`);
+
+        // IMPORTANT: Use axios.delete, NOT safeKohaGet
+        // Koha Path: DELETE /holds/{hold_id}
+        const response = await axios.delete(
+            `${KOHA_URL}/holds/${holdId}`, 
+            { headers: authHeader }
+        );
+
+        // Koha returns 204 No Content on successful deletion
+        if (response.status === 204 || response.status === 200) {
+            console.log(`Successfully cancelled Hold: ${holdId}`);
+            return res.json({ success: true, message: "Hold cancelled" });
+        }
+
+    } catch (error) {
+        console.error("KOHA DELETE HOLD ERROR:", error.response?.data || error.message);
+        
+        // If Koha returns an HTML 404, it means the REST API path is wrong or the ID doesn't exist
+        const status = error.response?.status || 500;
+        const msg = error.response?.data?.error || "Koha API Error or Hold ID not found";
+        
+        res.status(status).json({ error: msg });
+    }
+});
 // --- START SERVER ---
 app.listen(4040, "0.0.0.0", () => {
     console.log("SUCCESS: Backend Server listening on port 4040...");
