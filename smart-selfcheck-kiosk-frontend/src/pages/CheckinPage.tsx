@@ -5,7 +5,7 @@ import animationData from "../assets/Scanning Document.json";
 import { useKiosk } from '../context/KioskContext';
 import SimpleScanner from '../components/common/TestQrResult';
 import { diffInDays } from '../utils/dueDateFormulate';
-import Swal from 'sweetalert2'; 
+import Swal from 'sweetalert2';
 import { useEffect } from 'react';
 import axios from 'axios';
 
@@ -20,7 +20,7 @@ const CheckinPage = () => {
     setCheckouts,
     setBiblios,
     setItems,
-    patronId
+    patronId,
   } = useKiosk();
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -80,7 +80,7 @@ const CheckinPage = () => {
       };
 
       setDisplayCheckins((prev: any) => [newReturn, ...prev]);
-      Swal.fire({ title: 'Scanned', text:  `${newReturn.title} added to return list`, icon: 'success', timer: 1500, showConfirmButton: false });
+      Swal.fire({ title: 'Scanned', text: `${newReturn.title} added to return list`, icon: 'success', timer: 1500, showConfirmButton: false });
     });
   };
 
@@ -118,26 +118,21 @@ const CheckinPage = () => {
               // 2. LIVE LOOKUP LOGIC: This ensures data updates instantly on the first refresh
               const itemInfo = items.find((i: any) => i.external_id === scannedItem.barcode);
               const checkoutInfo = checkouts.find((c: any) => c.item_id === itemInfo?.item_id);
-              
+
               // Use fresh data from checkout if available, otherwise fallback to scanned item data
               const finalDueDate = checkoutInfo ? checkoutInfo.due_date : scannedItem.dueDate;
               const isOverdue = new Date(finalDueDate) < new Date();
-              
+
               // Calculate days late using the fresh date
               const rawDiff = diffInDays({ ...scannedItem, dueDate: finalDueDate });
               const daysLate = Math.max(1, Math.abs(rawDiff));
 
-              let statusColor = '#3498db'; 
+              let statusColor = '#3498db';
               let statusEmoji = '📘';
 
               if (isOverdue) {
-                if (daysLate >= 4) {
-                  statusColor = '#e74c3c'; 
-                  statusEmoji = '📕';
-                } else {
-                  statusColor = '#e67e22'; 
-                  statusEmoji = '📙';
-                }
+                statusColor = '#e74c3c';
+                statusEmoji = '📕';
               }
 
               return (

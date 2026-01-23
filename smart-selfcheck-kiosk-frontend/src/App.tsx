@@ -12,6 +12,7 @@ import MyQRCode from "./pages/Qr";
 import RenewItemsPage from "./pages/RenewItemsPage";
 import PublicRoute from "./components/auth/PublicRoute";
 import HoldsPage from "./pages/HoldsPage";
+import HoldDetectedPage from "./pages/HoldDetectedPage";
 // import Try from "./Try";
 
 function App() {
@@ -32,6 +33,7 @@ function App() {
           <Route path="/hold" element={<HoldsPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/renew" element={<RenewItemsPage />} />
+          <Route path="/onholddetected" element={<HoldDetectedPage />} />
         </Route>
 
         {/* 404 */}

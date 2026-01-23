@@ -129,6 +129,10 @@ const SuccessPage = () => {
               <span>On Time:</span>
               <span>{notOverdueCount > 1 ? `${notOverdueCount} items` : `${notOverdueCount} item`}</span>
             </div>
+            <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30  text-[26px]'>
+              <span>On Hold:</span>
+              <span>{notOverdueCount > 1 ? `${notOverdueCount} items` : `${notOverdueCount} item`}</span>
+            </div>
             <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
               <span>Overdue:</span>
               <span>{overdueCount > 1 ? `${overdueCount} items` : `${overdueCount} item`}</span>
@@ -154,13 +158,8 @@ const SuccessPage = () => {
                 let statusEmoji = '📘';
 
                 if (displayCheckin.isOverdue) {
-                  if (daysLate >= 4) {
                     statusColor = '#e74c3c'; // Red
                     statusEmoji = '📕';
-                  } else {
-                    statusColor = '#e67e22'; // Orange
-                    statusEmoji = '📙';
-                  }
                 }
 
                 return (

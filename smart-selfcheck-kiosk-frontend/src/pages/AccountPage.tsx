@@ -39,11 +39,11 @@ const AccountPage = () => {
     fetchItems();
   }, [patronId, API_BASE, setCheckouts, setBiblios, setItems]);
 
-  const totalOverdueBooks = checkouts.reduce((totalOverdue, book)=>{
+  const totalOverdueBooks = checkouts.reduce((totalOverdue, book) => {
     const now = new Date()
     const dueDate = new Date(book.due_date)
     return dueDate < now ? totalOverdue + 1 : totalOverdue
-  },0)
+  }, 0)
 
   return (
     <div className='max-w-[1080px] min-h-[1920px] m-auto border-x border-x-solid border-x-gray-700'>
@@ -93,18 +93,13 @@ const AccountPage = () => {
               let statusEmoji = '📘';
 
               if (isOverdue) {
-                if (daysLate >= 4) {
-                  statusColor = '#e74c3c'; // Red (4+ days)
-                  statusEmoji = '📕';
-                } else {
-                  statusColor = '#e67e22'; // Orange (1-3 days)
-                  statusEmoji = '📙';
-                }
+                statusColor = '#e74c3c'; // Red (4+ days)
+                statusEmoji = '📕';
               }
 
               return (
-                <div 
-                  key={checkout.checkout_id} 
+                <div
+                  key={checkout.checkout_id}
                   className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[5px]'
                   style={{ borderLeftColor: statusColor }}
                 >
@@ -114,16 +109,16 @@ const AccountPage = () => {
                       {biblio?.title || "Loading Title..."}
                     </div>
                     <div className='text-[20px] text-[rgb(127_140_141)]'>Due: {formatDate(checkout.due_date)} </div>
-                    
+
                     {diff > 0
                       ? <div className='text-[#3498db] text-[22px] font-bold'>
                         {`${diff} days left`}
                       </div>
                       : <div className='text-[22px] font-bold' style={{ color: statusColor }}>
-                        {`${daysLate === 0 || daysLate === 1 
+                        {`${daysLate === 0 || daysLate === 1
                           ? '1 day overdue'
                           : `${daysLate} days overdue`
-                        }`}
+                          }`}
                       </div>}
                   </div>
                   <div className='ml-auto text-[24px]' style={{ color: statusColor }}>

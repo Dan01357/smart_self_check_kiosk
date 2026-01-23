@@ -142,6 +142,11 @@ const Footer = () => {
     navigate("/home");
   };
 
+  const handleContinue = () => {
+    // Pass the state so SuccessPage knows to show the "Return Successful" UI
+    navigate('/success', { state: { from: '/checkin' } });
+  }
+
   if (path === '/home') {
     return (
       <div className={wrapperClass}>
@@ -183,7 +188,7 @@ const Footer = () => {
 
   else if (path === '/checkout') {
     const isListEmpty = displayCheckouts.length === 0;
-   
+
     return (
       <div className={wrapperClass}>
         {/* CANCEL: Just go home. No API calls = No trace in Koha */}
@@ -307,6 +312,7 @@ const Footer = () => {
         </div>
       );
     }
+
   }
   else if (path === '/renew') {
     return (
@@ -332,6 +338,24 @@ const Footer = () => {
             <div>Done</div>
           </button>
         </Link>
+
+      </div>
+    );
+  }
+  else if (path === '/onholddetected') {
+    return (
+      <div className={wrapperClass}>
+        <Link to="/home">
+          <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" >
+            <div className="mr-2">🏠</div>
+            <div>Done</div>
+          </button>
+        </Link>
+        <button
+          className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300" onClick={handleContinue}
+        >
+          <div>✓ Continue</div>
+        </button>
 
       </div>
     );
