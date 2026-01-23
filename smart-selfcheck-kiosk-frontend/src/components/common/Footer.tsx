@@ -172,8 +172,32 @@ const Footer = () => {
     navigate("/home");
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     // Pass the state so SuccessPage knows to show the "Return Successful" UI
+    Swal.fire({
+      title: 'Processing Returns...',
+      didOpen: () => Swal.showLoading(),
+      allowOutsideClick: false
+    });
+
+    try {
+      // Perform the actual checkins only now
+      const promises = displayCheckins.map(item =>
+        fetch(`${API_BASE}/api/checkin`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ barcode: item.barcode })
+        })
+      );
+
+      await Promise.all(promises);
+      // Clear state and navigate
+      navigate("/success", { state: { from: path } });
+      Swal.close();
+    } catch (error) {
+      Swal.fire({ title: 'Error', text: 'Some items failed to return.', icon: 'error' });
+    }
+
     navigate('/success', { state: { from: '/checkin' } });
   }
 
