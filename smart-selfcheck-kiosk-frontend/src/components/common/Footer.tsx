@@ -177,11 +177,6 @@ const Footer = () => {
             <div>Back to Home</div>
           </button>
         </Link>
-
-        <button className="py-[15px] px-[35px] rounded-[8px] bg-[#16a085]" onClick={handleRenewAll}>
-          <div>🔄 Renew All</div>
-        </button>
-
       </div>
     );
   }
@@ -322,7 +317,9 @@ const Footer = () => {
             <div>Done</div>
           </button>
         </Link>
-
+        <button className="py-[15px] px-[35px] rounded-[8px] bg-[#16a085]" onClick={handleRenewAll}>
+          <div>🔄 Renew All</div>
+        </button>
       </div>
     );
   }
