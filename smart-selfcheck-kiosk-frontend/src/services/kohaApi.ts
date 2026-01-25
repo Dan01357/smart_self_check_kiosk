@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const API_BASE = "http://192.168.0.169:4040"; 
-const token = btoa("administrator:Zxcqwe123$"); 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
+const token = btoa("administrator:Zxcqwe123$");
 
 export async function checkoutBook(patronId: number, itemId: number | undefined) {
   if (!itemId) throw new Error("Invalid Item ID");
@@ -21,9 +21,9 @@ export async function checkoutBook(patronId: number, itemId: number | undefined)
 
     // CRITICAL: Check if response.data exists before returning
     if (response.data && response.data.checkout_id) {
-        return response.data;
+      return response.data;
     }
-    
+
     throw new Error("Checkout failed: Server did not return a checkout ID");
 
   } catch (error: any) {

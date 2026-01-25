@@ -8,8 +8,8 @@ import { formatDate } from '../utils/formatDate';
 import { diffInDaysAccountPage } from '../utils/dueDateFormulate';
 
 const RenewItemsPage = () => {
-  const { patronId, checkouts, setCheckouts, biblios, setBiblios, items, setItems } = useKiosk();
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
+  const { patronId, checkouts, setCheckouts, biblios, setBiblios, items, setItems, API_BASE } = useKiosk();
+  
 
   // 1. Initial Data Fetching (Same logic as Account Page)
   useEffect(() => {

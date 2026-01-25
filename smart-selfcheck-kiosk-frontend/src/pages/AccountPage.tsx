@@ -8,8 +8,8 @@ import { diffInDaysAccountPage } from '../utils/dueDateFormulate'
 
 const AccountPage = () => {
   // Data is pulled from KioskContext (which hydrates from LocalStorage)
-  const { checkouts, setCheckouts, setBiblios, biblios, items, setItems, patronId } = useKiosk()
-  const API_BASE = import.meta.env.VITE_API_BASE_URL;
+  const { checkouts, setCheckouts, setBiblios, biblios, items, setItems, patronId, API_BASE } = useKiosk()
+
 
   useEffect(() => {
     // Only fetch if we have a valid patronId

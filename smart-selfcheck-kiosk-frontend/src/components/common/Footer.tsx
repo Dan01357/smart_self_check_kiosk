@@ -8,8 +8,8 @@ import { useEffect } from "react";
 const Footer = () => {
   const location = useLocation();
   const path = location.pathname;
-  const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts, setDisplayCheckins, setDisplayCheckouts, setHolds, holds } = useKiosk()
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
+  const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts, setDisplayCheckins, setDisplayCheckouts, setHolds, holds, API_BASE } = useKiosk()
+  
   // This replaces the locationBefore prop by reading the state passed during navigation
   const locationBefore = location.state?.from;
 

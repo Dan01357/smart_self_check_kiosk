@@ -20,10 +20,9 @@ const CheckinPage = () => {
     setCheckouts,
     setBiblios,
     setItems,
-    patronId
+    patronId, 
+    API_BASE
   } = useKiosk();
-
-  const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   // 1. EXACT FETCH LOGIC FROM ACCOUNT PAGE (Fastest updates)
   useEffect(() => {

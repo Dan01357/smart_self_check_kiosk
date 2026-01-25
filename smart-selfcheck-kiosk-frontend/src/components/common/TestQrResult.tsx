@@ -11,12 +11,12 @@ function SimpleScanner() {
   const {
    setPatronId, setShowScanner, patronId,
     setItems, items, setCheckouts, checkouts, biblios, setBiblios, // added 'checkouts' here
-    setDisplayCheckouts, setDisplayCheckins, displayCheckouts, setPatronName, displayCheckins, handleLoginSuccess
+    setDisplayCheckouts, setDisplayCheckins, displayCheckouts, setPatronName, displayCheckins, handleLoginSuccess, API_BASE
   } = useKiosk();
 
   const navigate = useNavigate();
   const location = useLocation();
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
+
   const currentLocation = location.pathname;
 
   // --- Centralized Data Fetching ---

@@ -28,11 +28,13 @@ interface KioskContextType {
   handleLoginSuccess: () => void;
   holds:any[];
   setHolds:React.Dispatch<React.SetStateAction<any[]>>;
+  API_BASE:string;
 }
 
 const KioskContext = createContext<KioskContextType | undefined>(undefined);
 
 export const KioskProvider = ({ children }: { children: ReactNode }) => {
+   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
   // 1. Initialize states directly from LocalStorage (Added displayCheckouts)
   const [authorized, setAuthorized] = useState<boolean>(() => localStorage.getItem("kiosk_auth") === "true");
   const [patronId, setPatronId] = useState<number>(() => Number(localStorage.getItem("kiosk_patron_id")) || 0);
@@ -100,7 +102,7 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
       isKeyboardOpen, openKeyboard, closeKeyboard, keyboardCallback,
       checkouts, setCheckouts, biblios, setBiblios, items, setItems,
       displayCheckouts, setDisplayCheckouts, showScanner, setShowScanner,
-      displayCheckins, setDisplayCheckins, patronName, setPatronName, handleLoginSuccess, holds, setHolds
+      displayCheckins, setDisplayCheckins, patronName, setPatronName, handleLoginSuccess, holds, setHolds, API_BASE
     }}>
       {children}
     </KioskContext.Provider>

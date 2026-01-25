@@ -8,10 +8,9 @@ import { formatDate } from '../utils/formatDate';
 import Swal from 'sweetalert2';
 
 const HoldsPage = () => {
-  const { patronId, biblios, holds, setHolds } = useKiosk();
+  const { patronId, biblios, holds, setHolds, API_BASE } = useKiosk();
 
   const [loading, setLoading] = useState(true);
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
 
   // 1. Fetch Holds Data
   const fetchHolds = async () => {
