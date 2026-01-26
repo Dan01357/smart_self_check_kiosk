@@ -103,15 +103,16 @@ const Footer = () => {
       fetchAllHolds();
       fetchAllCheckouts();
     };
-  }, [patronId]);
+  }, [patronId, API_BASE ]);
 
   const handleFinalCheckin = async () => {
 
     const allValidated = displayCheckins.every(displayCheckin =>
 
-      !holds.some(hold => hold.biblio_id === displayCheckin.biblioId)
+      holds.some(hold => hold.biblio_id === displayCheckin.biblioId)
     );
 
+    console.log(allValidated)
     if (allValidated) {
       Swal.fire({
         title: 'Processing Returns...',
