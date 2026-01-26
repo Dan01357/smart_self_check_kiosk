@@ -149,6 +149,7 @@ const Footer = () => {
   const handleFinalCheckout = async () => {
     await fetchHolds();
     await fetchAllHolds();
+    await fetchAllCheckouts();
     if (displayCheckouts.length === 0) return;
 
     Swal.fire({
@@ -174,32 +175,27 @@ const Footer = () => {
         }
 
         const inCheckouts = allCheckouts.find(c => c.item_id === stagedItem.item_id);
-        
-        let isAlreadyInCheckoutsOfOtherPatron;
-        if (inCheckouts) {
-          isAlreadyInCheckoutsOfOtherPatron = inCheckouts.patron_id !== patronId
-        }
-        if(isAlreadyInCheckoutsOfOtherPatron){
+
+        if (inCheckouts && inCheckouts.patron_id !== patronId) {
           throw new Error("CHECKOUT_OTHER");
         }
- 
-        const currentlyHold = allHolds.find((hold: any) =>
-          hold.patron_id === patronId &&
-          hold.biblio_id === dbItem.biblio_id)
 
-        const currentlyHoldByOtherPatron = allHolds.find((hold: any) =>
-          hold.patron_id !== patronId &&
-          hold.biblio_id === dbItem.biblio_id)
+        // --- CONDITION 3: RESERVED BY OTHER (PRIORITY LOGIC) ---
+        // 1. Get all holds for this specific book (biblio_id)
+        // 2. Sort them by priority (1 is highest)
+        const itemHolds = allHolds
+          .filter((hold: any) => hold.biblio_id === dbItem.biblio_id)
+          .sort((a: any, b: any) => a.priority - b.priority);
 
-        if (currentlyHold) {
-          throw new Error("RESERVED");
+        if (itemHolds.length > 0) {
+          const priorityOneHold = itemHolds[0]; // The person at the top of the list
+
+          // If there is a Priority 1 hold and it's NOT the current patron
+          if (priorityOneHold.patron_id !== patronId) {
+            throw new Error("RESERVED_OTHER");
+          }
+          // If priorityOneHold.patron_id === patronId, the loop continues (allow checkout)
         }
-
-        if (currentlyHoldByOtherPatron) {
-          throw new Error("RESERVED_OTHER");
-        }
-
-
       }
 
       // 3. TRANSACTION: Only if the loop completes without throwing an error
@@ -223,8 +219,6 @@ const Footer = () => {
         message = "A book is already on your checkout list";
       } else if (error.message === "CHECKOUT_OTHER") {
         message = "A book is already checked out by someone else";
-      } else if (error.message === "RESERVED") {
-        message = "A book is already on your reserve list";
       }
       else {
         // Fallback for actual network/server errors
