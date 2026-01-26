@@ -66,7 +66,7 @@ const CheckinPage = () => {
 
       const currentCheckout = checkouts.find((c: any) => c.item_id === itemData.item_id);
       if (!currentCheckout) {
-        return Swal.fire({ title: 'Action Denied', text: 'This book is not in your checkout list.', icon: 'error' });
+        return Swal.fire({ title: 'Action Denied', text: 'A book is not in your checkout list.', icon: 'error' });
       }
 
       const isActuallyOverdue = new Date(currentCheckout.due_date) < new Date();
