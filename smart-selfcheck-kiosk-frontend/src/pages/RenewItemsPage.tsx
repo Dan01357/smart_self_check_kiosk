@@ -65,8 +65,7 @@ const RenewItemsPage = () => {
         }
       } catch (error: any) {
         // 1. Log the actual error to your browser console so you can see it!
-        console.log("Full Error Object:", error.response?.data);
-
+     
         const errorMsg = error.response?.data?.error || "";
 
         let friendlyMessage = "This item cannot be renewed at this time.";

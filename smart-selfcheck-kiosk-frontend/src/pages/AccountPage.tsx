@@ -7,43 +7,66 @@ import { formatDate } from '../utils/formatDate'
 import { diffInDaysAccountPage } from '../utils/dueDateFormulate'
 
 const AccountPage = () => {
-  // Data is pulled from KioskContext (which hydrates from LocalStorage)
-  const { checkouts, setCheckouts, setBiblios, biblios, items, setItems, patronId, API_BASE } = useKiosk()
-
+  const { 
+    checkouts, 
+    setCheckouts, 
+    setBiblios, 
+    biblios, 
+    items, 
+    setItems, 
+    patronId, 
+    API_BASE, 
+    setHolds, 
+    holds 
+  } = useKiosk()
 
   useEffect(() => {
-    // Only fetch if we have a valid patronId
     if (!patronId) return;
 
-    const fetchCheckouts = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axios.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`);
-        setCheckouts(response.data);
-      } catch (e) { console.error("Checkout fetch failed", e); }
-    }
-    const fetchBiblios = async () => {
-      try {
-        const response = await axios.get(`${API_BASE}/api/v1/biblios`);
-        setBiblios(response.data);
-      } catch (e) { console.error("Biblio fetch failed", e); }
-    }
-    const fetchItems = async () => {
-      try {
-        const response = await axios.get(`${API_BASE}/api/v1/items`);
-        setItems(response.data);
-      } catch (e) { console.error("Items fetch failed", e); }
-    }
+        const [resCheckouts, resBiblios, resItems, resHolds] = await Promise.all([
+          axios.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`),
+          axios.get(`${API_BASE}/api/v1/biblios`),
+          axios.get(`${API_BASE}/api/v1/items`),
+          axios.get(`${API_BASE}/api/v1/holds?patronId=${patronId}`)
+        ]);
 
-    fetchCheckouts();
-    fetchBiblios();
-    fetchItems();
-  }, [patronId, API_BASE, setCheckouts, setBiblios, setItems]);
+        setCheckouts(resCheckouts.data);
+        setBiblios(resBiblios.data);
+        setItems(resItems.data);
+        setHolds(resHolds.data);
+      } catch (e) {
+        console.error("Data fetch failed", e);
+      }
+    };
+
+    fetchData();
+  }, [patronId, API_BASE, setCheckouts, setBiblios, setItems, setHolds]);
 
   const totalOverdueBooks = checkouts.reduce((totalOverdue, book) => {
     const now = new Date()
     const dueDate = new Date(book.due_date)
     return dueDate < now ? totalOverdue + 1 : totalOverdue
   }, 0)
+
+  // Logic for Holds Status - Styled to match Checkout logic
+  const getHoldDisplay = (hold: any) => {
+    if (hold.waiting_date) {
+      return { label: 'READY FOR PICKUP', color: '#2ecc71', icon: '✅', rightIcon: '📍' };
+    }
+    if (hold.transit_date) {
+      return { label: 'IN TRANSIT', color: '#3498db', icon: '🚚', rightIcon: '📦' };
+    }
+    return { 
+      label: `PENDING (#${hold.priority} in line)`, 
+      color: '#f39c12', 
+      icon: '⏳', 
+      rightIcon: '💤' 
+    };
+  };
+
+  const readyHoldsCount = holds.filter(h => h.waiting_date).length;
 
   return (
     <div className='max-w-[1080px] min-h-[1920px] m-auto border-x border-x-solid border-x-gray-700'>
@@ -52,19 +75,22 @@ const AccountPage = () => {
       <div className='pt-60 flex p-[40px] flex-col overflow-auto pb-30'>
         <div className='text-center text-[42px] mb-[35px] text-[#2c3e50] font-bold '>Account Overview</div>
 
-        <div className='bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[40px] text-white mb-[30px]'>
+        {/* --- SUMMARY CARD --- */}
+        <div className='bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[40px] text-white mb-[30px] shadow-lg'>
           <div className='text-[36px] font-bold mb-[30px] text-center'>Current Status</div>
-          <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30  text-[26px]'>
+          <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
             <span>Items Checked Out:</span>
             <span>{checkouts.length}</span>
           </div>
-          <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30  text-[26px]'>
+          <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
             <span>Items on Hold:</span>
-            <span>0 ready</span>
+            <span className={readyHoldsCount > 0 ? "font-bold text-green-300" : ""}>
+              {readyHoldsCount} ready ({holds.length} total)
+            </span>
           </div>
           <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
             <span>Overdue Items:</span>
-            <span>{totalOverdueBooks}</span>
+            <span className={totalOverdueBooks > 0 ? "font-bold text-red-300" : ""}>{totalOverdueBooks}</span>
           </div>
           <div className='text-[34px] font-bold mt-[15px] pt-[25px] border-t border-t-[3px] border-t-solid border-t-white/50 flex justify-between'>
             <span>Outstanding Fines:</span>
@@ -72,61 +98,73 @@ const AccountPage = () => {
           </div>
         </div>
 
-        <div className='bg-[rgb(236_240_241)] p-[30px] rounded-[15px]'>
-          <div className='font-bold text-[rgb(44_62_80)] flex items-center justify-between mb-4'>
-            <div className='text-[32px]'>Currently Checked Out</div>
-          </div>
+        {/* --- CHECKED OUT SECTION --- */}
+        <div className='bg-[rgb(236_240_241)] p-[30px] rounded-[15px] mb-[30px]'>
+          <div className='font-bold text-[rgb(44_62_80)] mb-4 text-[32px]'>Currently Checked Out</div>
           <div className='flex flex-col gap-5'>
-            {checkouts.map((checkout: any) => {
-              // Lookup logic using persisted data
+            {checkouts.length > 0 ? checkouts.map((checkout: any) => {
               const item = (items as any[]).find((i: any) => i.item_id === checkout?.item_id);
               const biblio = (biblios as any[]).find((b: any) => b.biblio_id === item?.biblio_id);
-
-              // DESIGN LOGIC FROM CHECKIN PAGE
               const diff = diffInDaysAccountPage(checkout);
               const isOverdue = diff <= 0;
-              const absDiff = Math.abs(diff);
-              // Koha logic: if it's due today (0) or past, it's at least 1 day late in display
-              const daysLate = Math.max(1, absDiff);
+              const daysLate = Math.max(1, Math.abs(diff));
 
-              let statusColor = '#3498db'; // Blue (On time)
+              let statusColor = '#3498db'; 
               let statusEmoji = '📘';
-
               if (isOverdue) {
-                statusColor = '#e74c3c'; // Red (4+ days)
+                statusColor = '#e74c3c';
                 statusEmoji = '📕';
               }
 
               return (
-                <div
-                  key={checkout.checkout_id}
-                  className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[5px]'
-                  style={{ borderLeftColor: statusColor }}
-                >
+                <div key={checkout.checkout_id} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[8px]' style={{ borderLeftColor: statusColor }}>
                   <div className='text-[50px] min-w-[50px] mr-5'>{statusEmoji}</div>
-                  <div>
-                    <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>
-                      {biblio?.title || "Loading Title..."}
+                  <div className='flex-grow'>
+                    <div className='text-[26px] font-bold text-[#2c3e50] leading-tight'>{biblio?.title || "Loading Title..."}</div>
+                    <div className='text-[20px] text-[#7f8c8d]'>Due: {formatDate(checkout.due_date)}</div>
+                    <div className='text-[22px] font-bold' style={{ color: statusColor }}>
+                      {isOverdue ? `${daysLate} ${daysLate === 1 ? 'day' : 'days'} overdue` : `${diff} days left`}
                     </div>
-                    <div className='text-[20px] text-[rgb(127_140_141)]'>Due: {formatDate(checkout.due_date)} </div>
-
-                    {diff > 0
-                      ? <div className='text-[#3498db] text-[22px] font-bold'>
-                        {`${diff} days left`}
-                      </div>
-                      : <div className='text-[22px] font-bold' style={{ color: statusColor }}>
-                        {`${daysLate === 0 || daysLate === 1
-                          ? '1 day overdue'
-                          : `${daysLate} days overdue`
-                          }`}
-                      </div>}
                   </div>
-                  <div className='ml-auto text-[24px]' style={{ color: statusColor }}>
-                    {isOverdue ? '⚠️' : '✓'}
+                  <div className='text-[30px] ml-auto'>{isOverdue ? '⚠️' : '✓'}</div>
+                </div>
+              );
+            }) : <div className="text-[22px] text-gray-500 italic">No items checked out.</div>}
+          </div>
+        </div>
+
+        {/* --- HOLDS SECTION --- */}
+        <div className='bg-[rgb(236_240_241)] p-[30px] rounded-[15px]'>
+          <div className='font-bold text-[rgb(44_62_80)] mb-4 text-[32px]'>My Holds & Reserves</div>
+          <div className='flex flex-col gap-5'>
+            {holds.length > 0 ? holds.map((hold: any) => {
+              const biblioInfo = biblios.find((b: any) => b.biblio_id === hold.biblio_id);
+              const status = getHoldDisplay(hold);
+              
+              return (
+                <div key={hold.hold_id} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[8px]' style={{ borderLeftColor: status.color }}>
+                  {/* Left Icon (Emoji) */}
+                  <div className='text-[50px] min-w-[50px] mr-5'>{status.icon}</div>
+                  
+                  {/* Text Content */}
+                  <div className='flex-grow'>
+                    <div className='text-[26px] font-bold text-[#2c3e50] leading-tight'>
+                      {biblioInfo?.title || "Loading..."}
+                    </div>
+                    <div className='text-[20px] text-[#7f8c8d]'>Placed: {formatDate(hold.hold_date)}</div>
+                    {/* Status Text (positioned exactly like "X days left") */}
+                    <div className='text-[22px] font-bold' style={{ color: status.color }}>
+                      {status.label}
+                    </div>
+                  </div>
+
+                  {/* Right Side Status Icon */}
+                  <div className='text-[30px] ml-auto'>
+                    {status.rightIcon}
                   </div>
                 </div>
               );
-            })}
+            }) : <div className="text-[22px] text-gray-500 italic">No active holds.</div>}
           </div>
         </div>
       </div>

@@ -71,7 +71,6 @@ const Footer = () => {
     fetchHolds();
   }, []);
 
-  console.log(displayCheckins, holds)
   const handleFinalCheckin = async () => {
 
     const allValidated = displayCheckins.every(displayCheckin =>

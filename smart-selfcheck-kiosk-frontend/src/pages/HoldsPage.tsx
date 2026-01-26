@@ -19,6 +19,7 @@ const HoldsPage = () => {
       // Note: This endpoint should join hold data with biblio/title data in your Express backend
       const response = await axios.get(`${API_BASE}/api/v1/holds?patronId=${patronId}`);
       setHolds(response.data);
+      console.log(response)
     } catch (e) {
       console.error("Holds fetch failed", e);
     } finally {
@@ -78,8 +79,6 @@ const HoldsPage = () => {
     if (hold.transit_date) return { label: 'IN TRANSIT', color: 'bg-blue-400', icon: '🚚' };
     return { label: `PENDING (#${hold.priority} in line)`, color: 'bg-amber-500', icon: '⏳' };
   };
-
-  console.log(holds)
   return (
     <div className='max-w-[1080px] min-h-[1920px] m-auto border-x border-x-solid border-x-gray-700 bg-white'>
       <Header />
