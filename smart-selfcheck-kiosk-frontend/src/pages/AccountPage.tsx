@@ -114,7 +114,7 @@ const AccountPage = () => {
           </div>
           <div className='text-[34px] font-bold mt-[15px] pt-[25px] border-t border-t-[3px] border-t-solid border-t-white/50 flex justify-between'>
             <span>Outstanding Fines:</span>
-            <span>$0</span>
+            <span>₱0</span>
           </div>
         </div>
 
