@@ -56,20 +56,24 @@ const Footer = () => {
   };
   const navigate = useNavigate();
 
+   // 1. Fetch Holds Data
+  const fetchHolds = async () => {
+   
+    try {
+      // Note: This endpoint should join hold data with biblio/title data in your Express backend
+      const response = await axios.get(`${API_BASE}/api/v1/holds?patronId=${patronId}`);
+      setHolds(response.data);
+      console.log(response)
+    } catch (e) {
+      console.error("Holds fetch failed", e);
+    } finally {
+
+    }
+  };
+
   useEffect(() => {
-    // 1. Fetch Holds Data
-    const fetchHolds = async () => {
-      try {
-        // Note: This endpoint should join hold data with biblio/title data in your Express backend
-        const response = await axios.get(`${API_BASE}/api/v1/holds`);
-        setHolds(response.data);
-      } catch (e) {
-        console.error("Holds fetch failed", e);
-      } finally {
-      }
-    };
-    fetchHolds();
-  }, []);
+    if (patronId) fetchHolds();
+  }, [patronId]);
 
   const handleFinalCheckin = async () => {
 
@@ -113,6 +117,7 @@ const Footer = () => {
   // ... (inside Footer component)
 
   const handleFinalCheckout = async () => {
+    await fetchHolds();
     if (displayCheckouts.length === 0) return;
 
     Swal.fire({

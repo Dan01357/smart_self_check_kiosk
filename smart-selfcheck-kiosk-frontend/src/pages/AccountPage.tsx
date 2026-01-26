@@ -7,56 +7,71 @@ import { formatDate } from '../utils/formatDate'
 import { diffInDaysAccountPage } from '../utils/dueDateFormulate'
 
 const AccountPage = () => {
-  const { 
-    checkouts, 
-    setCheckouts, 
-    setBiblios, 
-    biblios, 
-    items, 
-    setItems, 
-    patronId, 
-    API_BASE, 
-    setHolds, 
-    holds 
+  const {
+    checkouts,
+    setCheckouts,
+    setBiblios,
+    biblios,
+    items,
+    setItems,
+    patronId,
+    API_BASE,
+    setHolds,
+    holds
   } = useKiosk()
 
- useEffect(() => {
+  useEffect(() => {
     if (!patronId) {
-      // Clear data if no one is logged in
       setHolds([]);
       setCheckouts([]);
       return;
     };
 
-    const fetchData = async () => {
+    // --- INDIVIDUAL FETCHERS ---
+
+    const fetchCheckouts = async () => {
       try {
-        // Optional: setHolds([]); // Clear previous user's holds immediately 
-
-        const [resCheckouts, resBiblios, resItems, resHolds] = await Promise.all([
-          axios.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`),
-          axios.get(`${API_BASE}/api/v1/biblios`),
-          axios.get(`${API_BASE}/api/v1/items`),
-          axios.get(`${API_BASE}/api/v1/holds?patronId=${patronId}`)
-        ]);
-
-        setCheckouts(resCheckouts.data);
-        setBiblios(resBiblios.data);
-        setItems(resItems.data);
-        setHolds(resHolds.data);
-      } catch (e) {
-        console.error("Data fetch failed", e);
-      }
+        const res = await axios.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`);
+        setCheckouts(res.data);
+      } catch (e) { console.error("Checkouts fetch failed", e); }
     };
 
-    fetchData();
-  }, [patronId, API_BASE]); // Simplified dependencies
+    const fetchHolds = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/v1/holds?patronId=${patronId}`);
+        setHolds(res.data);
+      } catch (e) { console.error("Holds fetch failed", e); }
+    };
+
+    const fetchBiblios = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/v1/biblios`);
+        setBiblios(res.data);
+      } catch (e) { console.error("Biblios fetch failed", e); }
+    };
+
+    const fetchItems = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/v1/items`);
+        setItems(res.data);
+      } catch (e) { console.error("Items fetch failed", e); }
+    };
+
+    // Fire them all independently. They will update the UI as soon as they arrive.
+    fetchCheckouts();
+    fetchHolds();
+    fetchBiblios();
+    fetchItems();
+
+  }, [patronId, API_BASE]);
+
+
   const totalOverdueBooks = checkouts.reduce((totalOverdue, book) => {
     const now = new Date()
     const dueDate = new Date(book.due_date)
     return dueDate < now ? totalOverdue + 1 : totalOverdue
   }, 0)
 
-  // Logic for Holds Status - Styled to match Checkout logic
   const getHoldDisplay = (hold: any) => {
     if (hold.waiting_date) {
       return { label: 'READY FOR PICKUP', color: '#2ecc71', icon: '✅', rightIcon: '📍' };
@@ -64,11 +79,11 @@ const AccountPage = () => {
     if (hold.transit_date) {
       return { label: 'IN TRANSIT', color: '#3498db', icon: '🚚', rightIcon: '📦' };
     }
-    return { 
-      label: `PENDING (#${hold.priority} in line)`, 
-      color: '#f39c12', 
-      icon: '⏳', 
-      rightIcon: '💤' 
+    return {
+      label: `PENDING (#${hold.priority} in line)`,
+      color: '#f39c12',
+      icon: '⏳',
+      rightIcon: '💤'
     };
   };
 
@@ -81,7 +96,6 @@ const AccountPage = () => {
       <div className='pt-60 flex p-[40px] flex-col overflow-auto pb-30'>
         <div className='text-center text-[42px] mb-[35px] text-[#2c3e50] font-bold '>Account Overview</div>
 
-        {/* --- SUMMARY CARD --- */}
         <div className='bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[40px] text-white mb-[30px] shadow-lg'>
           <div className='text-[36px] font-bold mb-[30px] text-center'>Current Status</div>
           <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
@@ -104,7 +118,6 @@ const AccountPage = () => {
           </div>
         </div>
 
-        {/* --- CHECKED OUT SECTION --- */}
         <div className='bg-[rgb(236_240_241)] p-[30px] rounded-[15px] mb-[30px]'>
           <div className='font-bold text-[rgb(44_62_80)] mb-4 text-[32px]'>Currently Checked Out</div>
           <div className='flex flex-col gap-5'>
@@ -115,7 +128,7 @@ const AccountPage = () => {
               const isOverdue = diff <= 0;
               const daysLate = Math.max(1, Math.abs(diff));
 
-              let statusColor = '#3498db'; 
+              let statusColor = '#3498db';
               let statusEmoji = '📘';
               if (isOverdue) {
                 statusColor = '#e74c3c';
@@ -139,42 +152,32 @@ const AccountPage = () => {
           </div>
         </div>
 
-        {/* --- HOLDS SECTION --- */}
         <div className='bg-[rgb(236_240_241)] p-[30px] rounded-[15px]'>
           <div className='font-bold text-[rgb(44_62_80)] mb-4 text-[32px]'>My Holds & Reserves</div>
           <div className='flex flex-col gap-5'>
             {holds.length > 0 ? holds.map((hold: any) => {
-              const biblioInfo = biblios.find((b: any) => b.biblio_id === hold.biblio_id);
+              const biblioInfo = (biblios as any[]).find((b: any) => b.biblio_id === hold.biblio_id);
               const status = getHoldDisplay(hold);
-              
+
               return (
                 <div key={hold.hold_id} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[8px]' style={{ borderLeftColor: status.color }}>
-                  {/* Left Icon (Emoji) */}
                   <div className='text-[50px] min-w-[50px] mr-5'>{status.icon}</div>
-                  
-                  {/* Text Content */}
                   <div className='flex-grow'>
                     <div className='text-[26px] font-bold text-[#2c3e50] leading-tight'>
-                      {biblioInfo?.title || "Loading..."}
+                      {biblioInfo?.title || "Loading Title..."}
                     </div>
                     <div className='text-[20px] text-[#7f8c8d]'>Placed: {formatDate(hold.hold_date)}</div>
-                    {/* Status Text (positioned exactly like "X days left") */}
                     <div className='text-[22px] font-bold' style={{ color: status.color }}>
                       {status.label}
                     </div>
                   </div>
-
-                  {/* Right Side Status Icon */}
-                  <div className='text-[30px] ml-auto'>
-                    {status.rightIcon}
-                  </div>
+                  <div className='text-[30px] ml-auto'>{status.rightIcon}</div>
                 </div>
               );
             }) : <div className="text-[22px] text-gray-500 italic">No active holds.</div>}
           </div>
         </div>
       </div>
-
       <Footer />
     </div>
   )
