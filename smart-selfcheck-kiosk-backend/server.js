@@ -200,9 +200,15 @@ app.post("/api/v1/checkouts", async (req, res) => {
 // 4. Get Checkouts (For UI History)
 app.get(`/api/v1/checkouts`, async (req, res) => {
     const { patronId } = await req.query
+    if (patronId) {
+        const data = await safeKohaGet(`/patrons/${patronId}/checkouts`);
+        res.json(data);
+    }
+    else{
+        const data = await safeKohaGet(`/checkouts`);
+        res.json(data);
+    }
 
-    const data = await safeKohaGet(`/patrons/${patronId}/checkouts`);
-    res.json(data);
 });
 
 // 5. Get Biblios (For UI Title lookup)
@@ -255,7 +261,7 @@ app.get('/api/v1/holds', async (req, res) => {
         // 1. Strict check: If patronId is missing, null, or the string "undefined"
         if (!patronId || patronId === 'undefined' || patronId === 'null') {
             const data = await safeKohaGet(`/holds`);
-            
+
             return res.json(data);
         }
 

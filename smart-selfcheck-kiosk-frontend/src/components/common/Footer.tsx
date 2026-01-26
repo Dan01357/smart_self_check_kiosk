@@ -70,6 +70,7 @@ const Footer = () => {
     }
   };
   const [allHolds, setAllHolds] = useState<any[]>([]);
+  const [allCheckouts, setAllCheckouts] = useState<any[]>([]);
   const fetchAllHolds = async () => {
 
     try {
@@ -83,10 +84,24 @@ const Footer = () => {
     }
   };
 
+  const fetchAllCheckouts = async () => {
+
+    try {
+      // Note: This endpoint should join hold data with biblio/title data in your Express backend
+      const response = await axios.get(`${API_BASE}/api/v1/checkouts`);
+      setAllCheckouts(response.data);
+    } catch (e) {
+      console.error("Checkouts fetch failed", e);
+    } finally {
+
+    }
+  };
+
   useEffect(() => {
     if (patronId) {
       fetchHolds();
       fetchAllHolds();
+      fetchAllCheckouts();
     };
   }, [patronId]);
 
@@ -133,6 +148,7 @@ const Footer = () => {
 
   const handleFinalCheckout = async () => {
     await fetchHolds();
+    await fetchAllHolds();
     if (displayCheckouts.length === 0) return;
 
     Swal.fire({
@@ -157,6 +173,16 @@ const Footer = () => {
           throw new Error("MY_LIST");
         }
 
+        const inCheckouts = allCheckouts.find(c => c.item_id === stagedItem.item_id);
+        
+        let isAlreadyInCheckoutsOfOtherPatron;
+        if (inCheckouts) {
+          isAlreadyInCheckoutsOfOtherPatron = inCheckouts.patron_id !== patronId
+        }
+        if(isAlreadyInCheckoutsOfOtherPatron){
+          throw new Error("CHECKOUT_OTHER");
+        }
+ 
         const currentlyHold = allHolds.find((hold: any) =>
           hold.patron_id === patronId &&
           hold.biblio_id === dbItem.biblio_id)
@@ -168,14 +194,12 @@ const Footer = () => {
         if (currentlyHold) {
           throw new Error("RESERVED");
         }
-        
 
-        if (!currentlyHoldByOtherPatron || currentlyHoldByOtherPatron === undefined) {
-          throw new Error("CHECKOUT_OTHER");
-        }
-        else {
+        if (currentlyHoldByOtherPatron) {
           throw new Error("RESERVED_OTHER");
         }
+
+
       }
 
       // 3. TRANSACTION: Only if the loop completes without throwing an error
