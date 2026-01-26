@@ -3,13 +3,13 @@ import { useKiosk } from "../../context/KioskContext";
 import Swal from "sweetalert2";
 import axios from "axios";
 import { checkoutBook } from "../../services/kohaApi";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const Footer = () => {
   const location = useLocation();
   const path = location.pathname;
   const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts, setDisplayCheckins, setDisplayCheckouts, setHolds, holds, API_BASE } = useKiosk()
-  
+
   // This replaces the locationBefore prop by reading the state passed during navigation
   const locationBefore = location.state?.from;
 
@@ -56,14 +56,26 @@ const Footer = () => {
   };
   const navigate = useNavigate();
 
-   // 1. Fetch Holds Data
+  // 1. Fetch Holds Data
   const fetchHolds = async () => {
-   
+
     try {
       // Note: This endpoint should join hold data with biblio/title data in your Express backend
       const response = await axios.get(`${API_BASE}/api/v1/holds?patronId=${patronId}`);
       setHolds(response.data);
-      console.log(response)
+    } catch (e) {
+      console.error("Holds fetch failed", e);
+    } finally {
+
+    }
+  };
+  const [allHolds, setAllHolds] = useState<any[]>([]);
+  const fetchAllHolds = async () => {
+
+    try {
+      // Note: This endpoint should join hold data with biblio/title data in your Express backend
+      const response = await axios.get(`${API_BASE}/api/v1/holds`);
+      setAllHolds(response.data);
     } catch (e) {
       console.error("Holds fetch failed", e);
     } finally {
@@ -72,7 +84,10 @@ const Footer = () => {
   };
 
   useEffect(() => {
-    if (patronId) fetchHolds();
+    if (patronId) {
+      fetchHolds();
+      fetchAllHolds();
+    };
   }, [patronId]);
 
   const handleFinalCheckin = async () => {
@@ -127,46 +142,76 @@ const Footer = () => {
     });
 
     try {
-      // 1. PRE-VALIDATION: Fetch latest items status to ensure none were checked out 
-      // while the user was standing at the kiosk.
+      // 1. Fetch latest items status from the DB
       const { data: latestItems } = await axios.get(`${API_BASE}/api/v1/items`);
 
+      // 2. PRE-VALIDATION LOOP
       for (const stagedItem of displayCheckouts) {
         const dbItem = latestItems.find((i: any) => i.item_id === stagedItem.item_id);
 
-        // If the item has a checkout_id or an 'onloan' date, it's already taken
-        if (dbItem && (dbItem.checkout_id || dbItem.onloan)) {
-          throw new Error(`The item "${stagedItem.title}" is already checked out by someone else.`);
+        if (!dbItem) continue;
+
+
+        const isAlreadyInMyCheckouts = checkouts.some(c => c.item_id === stagedItem.item_id);
+        if (isAlreadyInMyCheckouts) {
+          throw new Error("MY_LIST");
+        }
+
+        const currentlyHold = allHolds.find((hold: any) =>
+          hold.patron_id === patronId &&
+          hold.biblio_id === dbItem.biblio_id)
+
+        const currentlyHoldByOtherPatron = allHolds.find((hold: any) =>
+          hold.patron_id !== patronId &&
+          hold.biblio_id === dbItem.biblio_id)
+
+        if (currentlyHold) {
+          throw new Error("RESERVED");
+        }
+        
+
+        if (!currentlyHoldByOtherPatron || currentlyHoldByOtherPatron === undefined) {
+          throw new Error("CHECKOUT_OTHER");
+        }
+        else {
+          throw new Error("RESERVED_OTHER");
         }
       }
 
-      // 2. TRANSACTION: Only if ALL items passed validation do we proceed
-      const allValidated = displayCheckouts.every(displayCheckout =>
-        // Ensure that for every display item, there is NOT a matching item in checkouts
-        !checkouts.some(checkout => checkout.item_id === displayCheckout.item_id)
-      );
-
-      if (allValidated) {
-        for (const item of displayCheckouts) {
-          await checkoutBook(patronId, item.item_id);
-        }
-
-        Swal.close();
-        navigate("/success", { state: { from: path } });
-      }
-      else {
-        const errorMessage = "A book has already been checked out";
-
-        Swal.fire({ title: 'Checkout Error', text: errorMessage, icon: 'error' });
+      // 3. TRANSACTION: Only if the loop completes without throwing an error
+      for (const item of displayCheckouts) {
+        await checkoutBook(patronId, item.item_id);
       }
 
+      Swal.close();
+      navigate("/success", { state: { from: path } });
 
     } catch (error: any) {
       console.error("Checkout Error:", error);
-      // This message now triggers BEFORE any database changes are made if validation fails
-      const errorMessage = "A book is already reserved by another patron";
 
-      Swal.fire({ title: 'Book on Hold', text: errorMessage, icon: 'error' });
+      let title = "Checkout Error";
+      let message = "An unexpected error occurred.";
+
+      // Determine specific message based on the error thrown in the loop
+      if (error.message === "RESERVED_OTHER") {
+        message = "A book is already reserved by some else";
+      } else if (error.message === "MY_LIST") {
+        message = "A book is already on your checkout list";
+      } else if (error.message === "CHECKOUT_OTHER") {
+        message = "A book is already checked out by someone else";
+      } else if (error.message === "RESERVED") {
+        message = "A book is already on your reserve list";
+      }
+      else {
+        // Fallback for actual network/server errors
+        message = error.response?.data?.message || error.message;
+      }
+
+      Swal.fire({
+        title: title,
+        text: message,
+        icon: 'error'
+      });
     }
   };
 

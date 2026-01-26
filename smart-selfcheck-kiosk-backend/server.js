@@ -254,8 +254,9 @@ app.get('/api/v1/holds', async (req, res) => {
 
         // 1. Strict check: If patronId is missing, null, or the string "undefined"
         if (!patronId || patronId === 'undefined' || patronId === 'null') {
-            console.log("Holds requested without valid patronId. Returning empty array.");
-            return res.json([]); 
+            const data = await safeKohaGet(`/holds`);
+            
+            return res.json(data);
         }
 
         // 2. Only fetch specific patron holds
