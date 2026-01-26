@@ -139,7 +139,7 @@ const SuccessPage = () => {
             </div>
             <div className='text-[34px] font-bold mt-[15px] pt-[25px] border-t border-t-[3px] border-t-solid border-t-white/50 flex justify-between'>
               <span>Late Fees:</span>
-              <span>$1.50</span>
+              <span>₱1.50</span>
             </div>
           </div>
           <div className='bg-[rgb(236_240_241)] p-[30px] rounded-[15px]'>

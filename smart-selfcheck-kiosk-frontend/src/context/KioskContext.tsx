@@ -26,24 +26,38 @@ interface KioskContextType {
   setPatronName: React.Dispatch<React.SetStateAction<string>>;
   patronName: string;
   handleLoginSuccess: () => void;
-  holds:any[];
-  setHolds:React.Dispatch<React.SetStateAction<any[]>>;
-  API_BASE:string;
+  holds: any[];
+  setHolds: React.Dispatch<React.SetStateAction<any[]>>;
+  // NEW STATES ADDED TO INTERFACE
+  allHolds: any[];
+  setAllHolds: React.Dispatch<React.SetStateAction<any[]>>;
+  allCheckouts: any[];
+  setAllCheckouts: React.Dispatch<React.SetStateAction<any[]>>;
+  patrons: any[];
+  setPatrons: React.Dispatch<React.SetStateAction<any[]>>;
+  API_BASE: string;
 }
 
 const KioskContext = createContext<KioskContextType | undefined>(undefined);
 
 export const KioskProvider = ({ children }: { children: ReactNode }) => {
-   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
-  // 1. Initialize states directly from LocalStorage (Added displayCheckouts)
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
+
+  // 1. Initialize states from LocalStorage
   const [authorized, setAuthorized] = useState<boolean>(() => localStorage.getItem("kiosk_auth") === "true");
   const [patronId, setPatronId] = useState<number>(() => Number(localStorage.getItem("kiosk_patron_id")) || 0);
   const [patronName, setPatronName] = useState<string>(() => localStorage.getItem("kiosk_patron_name") || '');
+  
   const [checkouts, setCheckouts] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_checkouts") || "[]"));
   const [biblios, setBiblios] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_biblios") || "[]"));
   const [items, setItems] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_items") || "[]"));
+  const [holds, setHolds] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_holds") || "[]"));
 
-  // PERSIST SCANNED ITEMS: Initialize from local storage instead of empty array
+  // NEW: Global data lists persistence
+  const [allHolds, setAllHolds] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_all_holds") || "[]"));
+  const [allCheckouts, setAllCheckouts] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_all_checkouts") || "[]"));
+  const [patrons, setPatrons] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_all_patrons") || "[]"));
+
   const [displayCheckouts, setDisplayCheckouts] = useState<any[]>(() =>
     JSON.parse(localStorage.getItem("kiosk_display_checkouts") || "[]")
   );
@@ -51,24 +65,27 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
     JSON.parse(localStorage.getItem("kiosk_display_checkins") || "[]")
   );
 
-  const [holds, setHolds] = useState<any[]>([]);
-
   const [showScanner, setShowScanner] = useState(false);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [keyboardCallback, setKeyboardCallback] = useState<(val: string) => void>(() => () => { });
 
-  // 2. Update Persist Logic to include displayCheckouts and displayCheckins
+  // 2. Update Persist Logic (Synchronization with LocalStorage)
   useEffect(() => {
     localStorage.setItem("kiosk_patron_id", patronId.toString());
     localStorage.setItem("kiosk_patron_name", patronName);
     localStorage.setItem("kiosk_checkouts", JSON.stringify(checkouts));
     localStorage.setItem("kiosk_biblios", JSON.stringify(biblios));
     localStorage.setItem("kiosk_items", JSON.stringify(items));
+    localStorage.setItem("kiosk_holds", JSON.stringify(holds));
 
-    // Save the UI display lists so they survive refresh
+    // Persist global lists
+    localStorage.setItem("kiosk_all_holds", JSON.stringify(allHolds));
+    localStorage.setItem("kiosk_all_checkouts", JSON.stringify(allCheckouts));
+    localStorage.setItem("kiosk_all_patrons", JSON.stringify(patrons));
+
     localStorage.setItem("kiosk_display_checkouts", JSON.stringify(displayCheckouts));
     localStorage.setItem("kiosk_display_checkins", JSON.stringify(displayCheckins));
-  }, [patronId, patronName, checkouts, biblios, items, displayCheckouts, displayCheckins]);
+  }, [patronId, patronName, checkouts, biblios, items, holds, allHolds, allCheckouts, patrons, displayCheckouts, displayCheckins]);
 
   const logout = () => {
     setAuthorized(false);
@@ -77,6 +94,10 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
     setCheckouts([]);
     setBiblios([]);
     setItems([]);
+    setHolds([]);
+    setAllHolds([]);
+    setAllCheckouts([]);
+    setPatrons([]);
     setDisplayCheckouts([]);
     setDisplayCheckins([]);
     setIsKeyboardOpen(false);
@@ -102,7 +123,10 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
       isKeyboardOpen, openKeyboard, closeKeyboard, keyboardCallback,
       checkouts, setCheckouts, biblios, setBiblios, items, setItems,
       displayCheckouts, setDisplayCheckouts, showScanner, setShowScanner,
-      displayCheckins, setDisplayCheckins, patronName, setPatronName, handleLoginSuccess, holds, setHolds, API_BASE
+      displayCheckins, setDisplayCheckins, patronName, setPatronName, 
+      handleLoginSuccess, holds, setHolds, 
+      allHolds, setAllHolds, allCheckouts, setAllCheckouts, patrons, setPatrons, // NEWLY EXPORTED
+      API_BASE
     }}>
       {children}
     </KioskContext.Provider>

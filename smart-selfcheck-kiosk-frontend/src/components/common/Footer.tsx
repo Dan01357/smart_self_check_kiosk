@@ -3,12 +3,16 @@ import { useKiosk } from "../../context/KioskContext";
 import Swal from "sweetalert2";
 import axios from "axios";
 import { checkoutBook } from "../../services/kohaApi";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 const Footer = () => {
   const location = useLocation();
   const path = location.pathname;
-  const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts, setDisplayCheckins, setDisplayCheckouts, setHolds, API_BASE } = useKiosk()
+  const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts, setDisplayCheckins, setDisplayCheckouts, setHolds, allHolds, API_BASE, allCheckouts, setAllHolds, setAllCheckouts, setPatrons } = useKiosk()
+
+
+
+
 
   // This replaces the locationBefore prop by reading the state passed during navigation
   const locationBefore = location.state?.from;
@@ -69,8 +73,7 @@ const Footer = () => {
 
     }
   };
-  const [allHolds, setAllHolds] = useState<any[]>([]);
-  const [allCheckouts, setAllCheckouts] = useState<any[]>([]);
+
   const fetchAllHolds = async () => {
 
     try {
@@ -97,23 +100,38 @@ const Footer = () => {
     }
   };
 
+  const fetchPatrons = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/v1/patrons`);
+      setPatrons(res.data);
+    } catch (e) { console.error("Patrons fetch failed", e); }
+  };
+
   useEffect(() => {
     if (patronId) {
       fetchHolds();
       fetchAllHolds();
       fetchAllCheckouts();
+      fetchPatrons();
     };
-  }, [patronId, API_BASE ]);
+  }, [patronId, API_BASE]);
 
   const handleFinalCheckin = async () => {
+    // 1. Refresh the holds list to get the most recent data
     await fetchAllHolds();
-    console.log(allHolds, displayCheckins)
-    const allValidated = displayCheckins.every(displayCheckin =>
 
-      !allHolds.some(hold => hold.biblio_id === displayCheckin.biblioId)
+    // 2. Identify which items being returned actually have holds
+    // We filter displayCheckins to find items where a hold exists for that biblioId
+
+    const displayHolds = allHolds.filter(hold =>
+      displayCheckins.some(checkinItem =>
+        Number(checkinItem.biblioId) === Number(hold.biblio_id)
+      )
     );
 
-    console.log(allValidated)
+    // 3. Validation: If displayHolds is empty, it means no holds were detected
+    const allValidated = displayHolds.length === 0;
+
     if (allValidated) {
       Swal.fire({
         title: 'Processing Returns...',
@@ -122,7 +140,7 @@ const Footer = () => {
       });
 
       try {
-        // Perform the actual checkins only now
+        // Perform the actual checkins
         const promises = displayCheckins.map(item =>
           fetch(`${API_BASE}/api/checkin`, {
             method: 'POST',
@@ -132,6 +150,7 @@ const Footer = () => {
         );
 
         await Promise.all(promises);
+
         // Clear state and navigate
         navigate("/success", { state: { from: path } });
         Swal.close();
@@ -140,10 +159,26 @@ const Footer = () => {
       }
     }
     else {
-      navigate("/onholddetected")
+      // Navigate to the hold detection page
+      // TIP: You might want to pass displayHolds in the navigation state 
+      // so the next page can show WHICH books have holds.
+      // 1. Show the loading spinner
+      Swal.fire({
+        title: 'Processing...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      // 2. Force a 1-second wait
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // 3. Close and move on
+      Swal.close();
+      navigate("/onholddetected", { state: { displayHolds } });
+
     }
-
-
   };
 
   // ... (inside Footer component)
