@@ -20,11 +20,18 @@ const AccountPage = () => {
     holds 
   } = useKiosk()
 
-  useEffect(() => {
-    if (!patronId) return;
+ useEffect(() => {
+    if (!patronId) {
+      // Clear data if no one is logged in
+      setHolds([]);
+      setCheckouts([]);
+      return;
+    };
 
     const fetchData = async () => {
       try {
+        // Optional: setHolds([]); // Clear previous user's holds immediately 
+
         const [resCheckouts, resBiblios, resItems, resHolds] = await Promise.all([
           axios.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`),
           axios.get(`${API_BASE}/api/v1/biblios`),
@@ -42,8 +49,7 @@ const AccountPage = () => {
     };
 
     fetchData();
-  }, [patronId, API_BASE, setCheckouts, setBiblios, setItems, setHolds]);
-
+  }, [patronId, API_BASE]); // Simplified dependencies
   const totalOverdueBooks = checkouts.reduce((totalOverdue, book) => {
     const now = new Date()
     const dueDate = new Date(book.due_date)

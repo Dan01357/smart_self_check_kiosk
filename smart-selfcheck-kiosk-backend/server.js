@@ -249,13 +249,21 @@ app.post("/api/v1/renew", async (req, res) => {
 
 //Holds
 app.get('/api/v1/holds', async (req, res) => {
-    const { patronId } = await req.query
-    if (patronId) {
+    try {
+        const { patronId } = req.query; // No need for 'await' on req.query
+
+        // 1. Strict check: If patronId is missing, null, or the string "undefined"
+        if (!patronId || patronId === 'undefined' || patronId === 'null') {
+            console.log("Holds requested without valid patronId. Returning empty array.");
+            return res.json([]); 
+        }
+
+        // 2. Only fetch specific patron holds
         const data = await safeKohaGet(`/patrons/${patronId}/holds`);
         res.json(data);
-    } else {
-        const data = await safeKohaGet(`/holds`);
-        res.json(data);
+    } catch (error) {
+        console.error("Backend Holds Error:", error.message);
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
