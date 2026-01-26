@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 const Footer = () => {
   const location = useLocation();
   const path = location.pathname;
-  const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts, setDisplayCheckins, setDisplayCheckouts, setHolds, holds, API_BASE } = useKiosk()
+  const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts, setDisplayCheckins, setDisplayCheckouts, setHolds, API_BASE } = useKiosk()
 
   // This replaces the locationBefore prop by reading the state passed during navigation
   const locationBefore = location.state?.from;
@@ -106,10 +106,11 @@ const Footer = () => {
   }, [patronId, API_BASE ]);
 
   const handleFinalCheckin = async () => {
-
+    await fetchAllHolds();
+    console.log(allHolds, displayCheckins)
     const allValidated = displayCheckins.every(displayCheckin =>
 
-      holds.some(hold => hold.biblio_id === displayCheckin.biblioId)
+      !allHolds.some(hold => hold.biblio_id === displayCheckin.biblioId)
     );
 
     console.log(allValidated)
