@@ -4,7 +4,6 @@ import Swal from 'sweetalert2';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useKiosk } from '../context/KioskContext';
 import { formatDate } from '../utils/formatDate';
-import { diffInDays } from '../utils/dueDateFormulate';
 
 const SuccessPage = () => {
   const navigate = useNavigate();
@@ -12,16 +11,26 @@ const SuccessPage = () => {
   const { displayCheckouts, setDisplayCheckouts, displayCheckins, setDisplayCheckins, displayHolds } = useKiosk()
   const locationBefore = location.state?.from;
 
-  // --- CALCULATIONS ---
-  const overdueCount = displayCheckins.reduce((count, item) => {
-    return item.isOverdue === true ? count + 1 : count;
-  }, 0);
+  // --- NORMALIZED CALCULATIONS ---
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-  const holdCount = displayCheckins.filter(item =>
-    displayHolds.some((hold: any) => Number(hold.biblio_id) === Number(item.biblioId))
-  ).length;
+  // Map items to their statuses first to ensure Summary counts match the List exactly
+  const itemsWithStatus = displayCheckins.map(item => {
+    const dueDateObj = new Date(item.dueDate);
+    dueDateObj.setHours(0, 0, 0, 0);
 
-  const notOverdueCount = displayCheckins.length - overdueCount;
+    const diffInDaysNormalized = Math.round((dueDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const isOverdue = diffInDaysNormalized < 0;
+    const daysLate = Math.abs(diffInDaysNormalized);
+    const isOnHold = displayHolds.some((hold: any) => Number(hold.biblio_id) === Number(item.biblioId));
+
+    return { ...item, isOverdue, daysLate, isOnHold };
+  });
+
+  const overdueCount = itemsWithStatus.filter(i => i.isOverdue).length;
+  const holdCount = itemsWithStatus.filter(i => i.isOnHold).length;
+  const onTimeCount = itemsWithStatus.filter(i => !i.isOverdue).length;
 
   const handlePrint = () => {
     setTimeout(() => {
@@ -133,15 +142,15 @@ const SuccessPage = () => {
             </div>
             <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30  text-[26px]'>
               <span>On Time:</span>
-              <span>{notOverdueCount > 1 ? `${notOverdueCount} items` : `${notOverdueCount} item`}</span>
+              <span>{onTimeCount === 1 ? '1 item' : `${onTimeCount} items`}</span>
             </div>
             <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30  text-[26px]'>
               <span>On Hold:</span>
-              <span>{holdCount > 1 ? `${holdCount} items` : `${holdCount} item`}</span>
+              <span>{holdCount === 1 ? '1 item' : `${holdCount} items`}</span>
             </div>
             <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
               <span>Overdue:</span>
-              <span>{overdueCount > 1 ? `${overdueCount} items` : `${overdueCount} item`}</span>
+              <span>{overdueCount === 1 ? '1 item' : `${overdueCount} items`}</span>
             </div>
             <div className='text-[34px] font-bold mt-[15px] pt-[25px] border-t border-t-[3px] border-t-solid border-t-white/50 flex justify-between'>
               <span>Late Fees:</span>
@@ -153,24 +162,20 @@ const SuccessPage = () => {
               <div className='text-[32px]'>Returned Items</div>
             </div>
             <div className='flex flex-col gap-5'>
-              {displayCheckins && displayCheckins.length > 0 ? displayCheckins.map((displayCheckin, index) => {
+              {itemsWithStatus && itemsWithStatus.length > 0 ? itemsWithStatus.map((item, index) => {
                 const now = new Date();
-                
-                const rawDiff = diffInDays(displayCheckin);
-                const daysLate = Math.max(1, Math.abs(rawDiff));
-
-                const isOnHold = displayHolds.some((hold: any) => Number(hold.biblio_id) === Number(displayCheckin.biblioId));
 
                 let statusColor = '#3498db'; // Default Blue
                 let statusEmoji = '📘';
 
-                if (displayCheckin.isOverdue) {
-                    statusColor = '#e74c3c'; // Red
+                // Apply Overdue (Red)
+                if (item.isOverdue) {
+                    statusColor = '#e74c3c';
                     statusEmoji = '📕';
                 }
 
-                // Hold Color and Emoji takes priority (#f39c12)
-                if (isOnHold) {
+                // Apply Hold (Orange #f39c12) - takes priority
+                if (item.isOnHold) {
                   statusColor = '#f39c12';
                   statusEmoji = '📙';
                 }
@@ -183,16 +188,16 @@ const SuccessPage = () => {
                   >
                     <div className='text-[50px] min-w-[50px] mr-5'>{statusEmoji}</div>
                     <div>
-                      <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{displayCheckin.title}</div>
+                      <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{item.title}</div>
                       <div className='text-[20px] text-[rgb(127_140_141)]'>Returned on: {formatDate(now)} </div>
                       
-                      {isOnHold ? (
+                      {item.isOnHold ? (
                         <div className='text-[22px] font-bold' style={{ color: statusColor }}>
                           On Hold
                         </div>
-                      ) : displayCheckin.isOverdue ? (
+                      ) : item.isOverdue ? (
                         <div className='text-[22px] font-bold' style={{ color: statusColor }}>
-                          {daysLate === 1 ? `1 day late` : `${daysLate} days late`}
+                          {item.daysLate === 1 ? `1 day late` : `${item.daysLate} days late`}
                         </div>
                       ) : (
                         <div className='text-[#3498db] text-[22px] font-bold'>
@@ -201,7 +206,7 @@ const SuccessPage = () => {
                       )}
                     </div>
                     <div className='ml-auto text-[24px]' style={{ color: statusColor }}>
-                      {(displayCheckin.isOverdue || isOnHold) ? '⚠️' : '✓'}
+                      {(item.isOverdue || item.isOnHold) ? '⚠️' : '✓'}
                     </div>
                   </div>
                 );
