@@ -11,27 +11,27 @@ const Footer = () => {
   const location = useLocation();
   const path = location.pathname;
   const navigate = useNavigate();
-  
+
   // Pull language from context
-  const { 
-    language, 
-    displayCheckouts, 
-    displayCheckins, 
-    patronId, 
-    checkouts, 
-    setCheckouts, 
-    setDisplayCheckins, 
-    setDisplayCheckouts, 
-    setHolds, 
-    allHolds, 
-    API_BASE, 
-    allCheckouts, 
-    setAllHolds, 
-    setAllCheckouts, 
-    setPatrons, 
-    displayHolds, 
-    biblios, 
-    patrons 
+  const {
+    language,
+    displayCheckouts,
+    displayCheckins,
+    patronId,
+    checkouts,
+    setCheckouts,
+    setDisplayCheckins,
+    setDisplayCheckouts,
+    setHolds,
+    allHolds,
+    API_BASE,
+    allCheckouts,
+    setAllHolds,
+    setAllCheckouts,
+    setPatrons,
+    displayHolds,
+    biblios,
+    patrons
   } = useKiosk();
 
   // Translation helper
@@ -118,7 +118,11 @@ const Footer = () => {
       for (const hold of priorityHolds) {
         const biblio = biblios.find((b: any) => Number(b.biblio_id) === Number(hold.biblio_id));
         const patron = patrons.find((p: any) => Number(p.patron_id) === Number(hold.patron_id));
-        // await sendHoldNotification(biblio?.title || "Book", patron ? `${patron.firstname} ${patron.surname}` : "Patron");
+        await sendHoldNotification(
+          biblio?.title || "Book",
+          patron ? `${patron.firstname} ${patron.surname}` : "Patron",
+          language // Pass the current language state ('EN' | 'JP' | 'KO')
+        );
       }
       navigate("/success", { state: { from: '/checkin' } });
       Swal.close();

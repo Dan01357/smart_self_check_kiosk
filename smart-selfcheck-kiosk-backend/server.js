@@ -204,7 +204,7 @@ app.get(`/api/v1/checkouts`, async (req, res) => {
         const data = await safeKohaGet(`/patrons/${patronId}/checkouts`);
         res.json(data);
     }
-    else{
+    else {
         const data = await safeKohaGet(`/checkouts`);
         res.json(data);
     }
@@ -315,38 +315,90 @@ app.delete('/api/v1/holds', async (req, res) => {
 import { Resend } from "resend";
 const resend = new Resend('re_QEgYTzMs_PEvRVUoUqmpQr5wbzouhgcDm');
 
-app.post('/api/v1/send-hold-email', async (req, res) => {
-  const { bookTitle, patronName } = req.body;
+// inside server.js
 
-  try {
-    const { data, error } = await resend.emails.send({
-      from: 'NTEK Koha <onboarding@resend.dev>',
-      to: ['daniloalvaro031717@gmail.com'],
-      subject: `Book Ready: ${bookTitle}`,
-      html: `
+const emailTranslations = {
+    EN: {
+        subject: "Book Ready: ",
+        greeting: "Hello",
+        ready_msg: "The book you reserved is now ready for pickup!",
+        label_title: "Book Title:",
+        label_status: "Status:",
+        status_val: "Routed to Hold Shelf",
+        instructions: "Instructions:",
+        instr_desc: "This book has been reserved by you. It has been automatically routed to the Hold Shelf for pickup.",
+        no_action_title: "No Action Required:",
+        no_action_desc: "You will find the book at the pickup shelf.",
+        footer: "NTEK Koha Library Kiosk Service"
+    },
+    JP: {
+        subject: "予約本準備完了: ",
+        greeting: "こんにちは",
+        ready_msg: "予約されていた本の準備ができました！",
+        label_title: "本 のタイトル:",
+        label_status: "ステータス:",
+        status_val: "予約棚へ回送",
+        instructions: "受け取り方法:",
+        instr_desc: "この本はあなたによって予約されています。自動的に予約受取棚へ回送されます。",
+        no_action_title: "対応不要:",
+        no_action_desc: "予約棚で本を見つけることができます。",
+        footer: "NTEK Koha 図書館キオ스크 サービス"
+    },
+    KO: {
+        subject: "예약 도서 준비 완료: ",
+        greeting: "안녕하세요",
+        ready_msg: "예약하신 도서가 준비되었습니다!",
+        label_title: "도서명:",
+        label_status: "상태:",
+        status_val: "예약 도서 선반으로 이동",
+        instructions: "안내:",
+        instr_desc: "해당 도서는 회원님에 의해 예약되었습니다. 수령을 위해 예약 도서 선반으로 자동 이동됩니다.",
+        no_action_title: "조치 불필요:",
+        no_action_desc: "예약 도서 선반에서 도서를 찾으실 수 있습니다.",
+        footer: "NTEK Koha 도서관 키오스크 서비스"
+    }
+};
+
+app.post('/api/v1/send-hold-email', async (req, res) => {
+    const { bookTitle, patronName, language } = req.body;
+
+    // Default to English if language not found
+    const lang = emailTranslations[language] || emailTranslations.EN;
+
+    // Format Greeting based on Language
+    let greetingText = `${lang.greeting} ${patronName},`;
+    if (language === 'JP') greetingText = `${patronName} 様、${lang.greeting}`;
+    if (language === 'KO') greetingText = `안녕하세요 ${patronName} 님,`;
+
+    try {
+        const { data, error } = await resend.emails.send({
+            from: 'NTEK Koha <onboarding@resend.dev>',
+            to: ['daniloalvaro031717@gmail.com'],
+            subject: `${lang.subject}${bookTitle}`,
+            html: `
         <div style="font-family: sans-serif; color: #2c3e50; line-height: 1.6;">
-          <h2 style="color: #e65100;">Hello ${patronName},</h2>
-          <p>The book you reserved is now ready for pickup!</p>
+          <h2 style="color: #e65100;">${greetingText}</h2>
+          <p>${lang.ready_msg}</p>
           <div style="background: #fdf2e9; padding: 20px; border-left: 5px solid #f39c12; margin: 20px 0;">
-            <strong>Book Title:</strong> ${bookTitle}<br />
-            <strong>Status:</strong> Routed to Hold Shelf
+            <strong>${lang.label_title}</strong> ${bookTitle}<br />
+            <strong>${lang.label_status}</strong> ${lang.status_val}
           </div>
-          <p><strong>Instructions:</strong></p>
-          <p>This book has been reserved by you. It has been automatically routed to the Hold Shelf for pickup.</p>
+          <p><strong>${lang.instructions}</strong></p>
+          <p>${lang.instr_desc}</p>
           <p style="background: #e3f2fd; padding: 15px; border-radius: 8px; color: #0d47a1;">
-            ✅ <strong>No Action Required:</strong> You will find the book at the pickup shelf.
+            ✅ <strong>${lang.no_action_title}</strong> ${lang.no_action_desc}
           </p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-          <p style="font-size: 12px; color: #7f8c8d;">NTEK Koha Library Kiosk Service</p>
+          <p style="font-size: 12px; color: #7f8c8d;">${lang.footer}</p>
         </div>
       `,
-    });
+        });
 
-    if (error) return res.status(400).json({ error });
-    res.json({ data });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+        if (error) return res.status(400).json({ error });
+        res.json({ data });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // --- START SERVER ---
