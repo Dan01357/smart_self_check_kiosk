@@ -13,6 +13,7 @@ import RenewItemsPage from "./pages/RenewItemsPage";
 import PublicRoute from "./components/auth/PublicRoute";
 import HoldsPage from "./pages/HoldsPage";
 import HoldDetectedPage from "./pages/HoldDetectedPage";
+import HelpPage from "./pages/HelpPage";
 // import Try from "./Try";
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
           <Route path="/account" element={<AccountPage />} />
           <Route path="/renew" element={<RenewItemsPage />} />
           <Route path="/onholddetected" element={<HoldDetectedPage />} />
+          <Route path="/help" element={<HelpPage />} />
         </Route>
 
         {/* 404 */}

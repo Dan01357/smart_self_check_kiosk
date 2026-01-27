@@ -523,6 +523,20 @@ const Footer = () => {
       </div>
     );
   }
+  else if (path === '/help') {
+    return (
+      <div className={wrapperClass}>
+        
+          <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={()=>navigate(-1)}>
+            <div className="mr-2">⬅️ Back</div>
+          </button>
+      
+        <button className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)]" onClick={()=>navigate('/home')} >
+          <div>🏠 Home</div>
+        </button>
+      </div>
+    );
+  }
   return null;
 }
 

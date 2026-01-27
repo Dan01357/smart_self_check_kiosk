@@ -1,9 +1,9 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { UserBtn } from './UserBtn'
 const Header = () => {
   const location = useLocation();
   const path = location.pathname;
-
+  const navigate = useNavigate()
   
   // This replaces the 'locationBefore' prop for the success page logic
   const fromPath = location.state?.from;
@@ -22,14 +22,14 @@ const Header = () => {
   );
 
   const HelpBtn = () => (
-    <button className="border border-white border-2 text-[25px] px-7 rounded-[10px] flex items-center hover:bg-white hover:text-[#27ae60] transition-colors duration-300 bg-white/20">
+    <button className="border border-white border-2 text-[25px] px-7 py-2 rounded-[10px] flex items-center hover:bg-white hover:text-[#27ae60] transition-colors duration-300 bg-white/20" onClick={() => navigate('/help')}>
       <div className="mr-1">❓</div>
       <div>Help</div>
     </button>
   );
 
   const LangBtn = () => (
-    <button className="border border-white border-2 text-[25px] px-8 rounded-[10px] flex items-center mr-4 hover:bg-white hover:text-[#27ae60] transition-colors duration-300 bg-white/20">
+    <button className="border border-white border-2 text-[25px] px-8 py-2 rounded-[10px] flex items-center mr-4 hover:bg-white hover:text-[#27ae60] transition-colors duration-300 bg-white/20">
       <div className="mr-1">🌐</div>
       <div>EN</div>
     </button>
@@ -153,7 +153,20 @@ const Header = () => {
         <div className="flex text-white justify-between">
           <Logo title="On Hold Detected" />
           <div className="flex">
-            <HelpBtn />
+            <HelpBtn  />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (path === '/help') {
+    return (
+      <div className={wrapperClass}>
+        <div className="flex text-white justify-between">
+          <Logo title="Help & Support" />
+          <div className="flex">
+           
           </div>
         </div>
       </div>
