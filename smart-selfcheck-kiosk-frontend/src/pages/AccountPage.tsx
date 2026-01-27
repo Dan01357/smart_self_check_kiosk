@@ -17,7 +17,9 @@ const AccountPage = () => {
     patronId,
     API_BASE,
     setHolds,
-    holds
+    holds,
+    allHolds,      // Added
+    setAllHolds    // Added
   } = useKiosk()
 
   useEffect(() => {
@@ -26,8 +28,6 @@ const AccountPage = () => {
       setCheckouts([]);
       return;
     };
-
-    // --- INDIVIDUAL FETCHERS ---
 
     const fetchCheckouts = async () => {
       try {
@@ -41,6 +41,13 @@ const AccountPage = () => {
         const res = await axios.get(`${API_BASE}/api/v1/holds?patronId=${patronId}`);
         setHolds(res.data);
       } catch (e) { console.error("Holds fetch failed", e); }
+    };
+
+    const fetchAllHolds = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/v1/holds`);
+        setAllHolds(res.data);
+      } catch (e) { console.error("Global holds fetch failed", e); }
     };
 
     const fetchBiblios = async () => {
@@ -57,9 +64,9 @@ const AccountPage = () => {
       } catch (e) { console.error("Items fetch failed", e); }
     };
 
-    // Fire them all independently. They will update the UI as soon as they arrive.
     fetchCheckouts();
     fetchHolds();
+    fetchAllHolds(); // Added
     fetchBiblios();
     fetchItems();
 
@@ -99,17 +106,17 @@ const AccountPage = () => {
         <div className='bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[40px] text-white mb-[30px] shadow-lg'>
           <div className='text-[36px] font-bold mb-[30px] text-center'>Current Status</div>
           <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
-            <span>Items Checked Out:</span>
+            <span>Books Checked Out:</span>
             <span>{checkouts.length}</span>
           </div>
           <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
-            <span>Items on Hold:</span>
+            <span>Book Reservations:</span>
             <span className={readyHoldsCount > 0 ? "font-bold text-green-300" : ""}>
               {readyHoldsCount} ready ({holds.length} total)
             </span>
           </div>
           <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
-            <span>Overdue Items:</span>
+            <span>Overdue Books:</span>
             <span className={totalOverdueBooks > 0 ? "font-bold text-red-300" : ""}>{totalOverdueBooks}</span>
           </div>
           <div className='text-[34px] font-bold mt-[15px] pt-[25px] border-t border-t-[3px] border-t-solid border-t-white/50 flex justify-between'>
@@ -124,17 +131,32 @@ const AccountPage = () => {
             {checkouts.length > 0 ? checkouts.map((checkout: any) => {
               const item = (items as any[]).find((i: any) => i.item_id === checkout?.item_id);
               const biblio = (biblios as any[]).find((b: any) => b.biblio_id === item?.biblio_id);
+
+              // HOLD DETECTION: Check if someone else has a hold on this book
+              const isOnHold = allHolds.some((hold: any) =>
+                Number(hold.biblio_id) === Number(biblio?.biblio_id) &&
+                Number(hold.patron_id) !== Number(patronId)
+              );
+
               const diff = diffInDaysAccountPage(checkout);
               const isOverdue = diff <= 0;
               const daysLate = Math.max(1, Math.abs(diff));
 
               let statusColor = '#3498db';
               let statusEmoji = '📘';
+
+              // Logic matches CheckinPage: if overdue or on hold, use red warning theme
+              // 1. Check Overdue (Red)
               if (isOverdue) {
                 statusColor = '#e74c3c';
                 statusEmoji = '📕';
               }
 
+              // 2. Check On Hold (Orange - overrides color)
+              if (isOnHold) {
+                statusColor = '#f39c12';
+                statusEmoji = '📙';
+              }
               return (
                 <div key={checkout.checkout_id} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[8px]' style={{ borderLeftColor: statusColor }}>
                   <div className='text-[50px] min-w-[50px] mr-5'>{statusEmoji}</div>
@@ -142,13 +164,18 @@ const AccountPage = () => {
                     <div className='text-[26px] font-bold text-[#2c3e50] leading-tight'>{biblio?.title || "Loading Title..."}</div>
                     <div className='text-[20px] text-[#7f8c8d]'>Due: {formatDate(checkout.due_date)}</div>
                     <div className='text-[22px] font-bold' style={{ color: statusColor }}>
-                      {isOverdue ? `${daysLate} ${daysLate === 1 ? 'day' : 'days'} overdue` : `${diff} days left`}
+                      {isOnHold
+                        ? 'On Hold'
+                        : isOverdue
+                          ? `${daysLate} ${daysLate === 1 ? 'day' : 'days'} overdue`
+                          : `${diff} days left`
+                      }
                     </div>
                   </div>
-                  <div className='text-[30px] ml-auto'>{isOverdue ? '⚠️' : '✓'}</div>
+                  <div className='text-[30px] ml-auto'>{(isOverdue || isOnHold) ? '⚠️' : '✓'}</div>
                 </div>
               );
-            }) : <div className="text-[22px] text-gray-500 italic">No items checked out.</div>}
+            }) : <div className="text-[22px] text-gray-500 italic">No books checked out.</div>}
           </div>
         </div>
 
