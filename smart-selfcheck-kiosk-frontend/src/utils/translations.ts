@@ -207,6 +207,7 @@ export const translations = {
     renewals_avail_label: "Renewals Available:",
     per_item: "per item",
     on_time_label: "On Time:",
+    on_hold_label: "On Hold",
     overdue_label_summary: "Overdue:",
     late_fees_label: "Late Fees:",
     your_books_label: "Your Books",
@@ -235,7 +236,9 @@ export const translations = {
     login_failed_err: "Login failed.",
     //--KeyboardPad--
     enter_details: "Enter details:",
-    done_btn_keyboard: "Done"
+    done_btn_keyboard: "Done",
+    //--User Btn--
+    logout_btn: "Logout",
   },
   JP: {
     // --- Header & Home ---
@@ -440,6 +443,7 @@ export const translations = {
     renewals_avail_label: "延長可能回数:",
     per_item: "（1冊につき）",
     on_time_label: "期限内:",
+    on_hold_label: "予約あり",
     overdue_label_summary: "延滞:",
     late_fees_label: "延滞料金:",
     your_books_label: "お貸出し中の本",
@@ -468,7 +472,9 @@ export const translations = {
     login_failed_err: "ログインに失敗しました。",
     //--KeyboardPad--
     enter_details: "詳細を入力してください:",
-    done_btn_keyboard: "完了"
+    done_btn_keyboard: "完了",
+    //--User Btn--
+    logout_btn: "ログアウト",
   },
   KO: {
     // --- Header & Home ---
@@ -673,6 +679,7 @@ export const translations = {
     renewals_avail_label: "연장 가능 횟수:",
     per_item: "항목당",
     on_time_label: "정상 반납:",
+    on_hold_label: "예약 중",
     overdue_label_summary: "연체 항목:",
     late_fees_label: "연체료:",
     your_books_label: "대출 도서 목록",
@@ -701,6 +708,8 @@ export const translations = {
     login_failed_err: "로그인에 실패했습니다.",
     //--KeyboardPad--
     enter_details: "상세 정보를 입력하세요:",
-    done_btn_keyboard: "완료"
+    done_btn_keyboard: "완료",
+    //--User Btn
+    logout_btn: "로그아웃",
   }
 };

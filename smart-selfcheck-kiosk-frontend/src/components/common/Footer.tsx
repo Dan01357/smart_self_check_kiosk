@@ -102,7 +102,7 @@ const Footer = () => {
       Swal.close();
       navigate("/success", { state: { from: path } });
     } catch (error: any) {
-      let message = error.message === "RESERVED_OTHER" ? "Reserved by someone else" : error.message === "MY_LIST" ? "Already on your list" : error.message === "CHECKOUT_OTHER" ? "Checked out by someone else" : error.message;
+      let message = error.message === "RESERVED_OTHER" ? "A book is already reserved by someone else" : error.message === "MY_LIST" ? "A book is already on your checkout list" : error.message === "CHECKOUT_OTHER" ? "A book is already checked out by someone else" : error.message;
       Swal.fire({ title: "Error", text: message, icon: 'error' });
     }
   };
@@ -118,7 +118,7 @@ const Footer = () => {
       for (const hold of priorityHolds) {
         const biblio = biblios.find((b: any) => Number(b.biblio_id) === Number(hold.biblio_id));
         const patron = patrons.find((p: any) => Number(p.patron_id) === Number(hold.patron_id));
-        await sendHoldNotification(biblio?.title || "Book", patron ? `${patron.firstname} ${patron.surname}` : "Patron");
+        // await sendHoldNotification(biblio?.title || "Book", patron ? `${patron.firstname} ${patron.surname}` : "Patron");
       }
       navigate("/success", { state: { from: '/checkin' } });
       Swal.close();

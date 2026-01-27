@@ -72,6 +72,19 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
     JSON.parse(localStorage.getItem("kiosk_display_holds") || "[]")
   );
 
+ const [language, setLanguage] = useState<'EN' | 'JP' | 'KO'>(() => {
+  const stored = localStorage.getItem("kiosk_lang");
+  if (stored) {
+    try {
+      // JSON.parse expects a string like "\"EN\""
+      return JSON.parse(stored);
+    } catch (e) {
+      return "EN";
+    }
+  }
+  return "EN"; // Default if nothing is in localStorage
+});
+
   const [showScanner, setShowScanner] = useState(false);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [keyboardCallback, setKeyboardCallback] = useState<(val: string) => void>(() => () => { });
@@ -93,7 +106,8 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
 
     localStorage.setItem("kiosk_display_checkouts", JSON.stringify(displayCheckouts));
     localStorage.setItem("kiosk_display_checkins", JSON.stringify(displayCheckins));
-  }, [patronId, patronName, checkouts, biblios, items, holds, allHolds, allCheckouts, patrons, displayCheckouts, displayCheckins, displayHolds]);
+    localStorage.setItem("kiosk_lang", JSON.stringify(language));
+  }, [patronId, patronName, checkouts, biblios, items, holds, allHolds, allCheckouts, patrons, displayCheckouts, displayCheckins, displayHolds, language]);
 
   const logout = () => {
     setAuthorized(false);
@@ -109,6 +123,7 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
     setDisplayCheckouts([]);
     setDisplayCheckins([]);
     setDisplayHolds([]);
+    setLanguage("EN");
     setIsKeyboardOpen(false);
     setShowScanner(false);
     localStorage.clear();
@@ -119,7 +134,7 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem("kiosk_auth", "true");
   }
 
-  const [language, setLanguage] = useState<'EN' | 'JP' | 'KO'>('EN');
+
 
   const openKeyboard = (onDone: (val: any) => void) => {
     setKeyboardCallback(() => onDone);
