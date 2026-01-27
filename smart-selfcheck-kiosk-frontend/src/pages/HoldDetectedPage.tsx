@@ -1,17 +1,16 @@
-import { useLocation } from 'react-router-dom';
+
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 import { useKiosk } from '../context/KioskContext';
 
 const HoldDetectedPage = () => {
-  const location = useLocation();
-  const { patrons, items, biblios } = useKiosk();
+  const { patrons, items, biblios, displayHolds } = useKiosk();
 
   // 1. Get the raw holds from navigation state
-  const rawHolds = location.state?.displayHolds || [];
+  const rawHolds = displayHolds || [];
 
   // 2. Filter for Priority 1 only AND Merge values
-  const displayHolds = rawHolds
+  const displayHoldsDetect = rawHolds
     .filter((hold: any) => Number(hold.priority) === 1) // Only include priority 1
     .map((hold: any) => {
       // Find Title from Biblios
@@ -36,11 +35,11 @@ const HoldDetectedPage = () => {
     });
 
   // 3. Extract unique lists for the Summary Card (Hold Information)
-  const uniquePatronNames: any[] = Array.from(new Set(displayHolds.map((h: any) => h.patronName)));
-  const uniqueBranches: any[] = Array.from(new Set(displayHolds.map((h: any) => h.pickupBranch)));
+  const uniquePatronNames: any[] = Array.from(new Set(displayHoldsDetect.map((h: any) => h.patronName)));
+  const uniqueBranches: any[] = Array.from(new Set(displayHoldsDetect.map((h: any) => h.pickupBranch)));
 
   // Fallback if no priority 1 holds exist
-  if (displayHolds.length === 0) {
+  if (displayHoldsDetect.length === 0) {
     return (
       <div className='max-w-[1080px] min-h-[1920px] m-auto bg-white'>
         <Header />
@@ -61,8 +60,8 @@ const HoldDetectedPage = () => {
           <div className='text-[120px] mb-[20px] animate-bounce'>⚠️</div>
           <div className='text-[40px] text-[#e65100] font-bold mb-[15px] uppercase'>Hold Item Detected</div>
           <div className='text-[26px] text-[#e65100]'>
-            {displayHolds.length > 1
-              ? `${displayHolds.length} books are reserved for other patrons!`
+            {displayHoldsDetect.length > 1
+              ? `${displayHoldsDetect.length} books are reserved for other patrons!`
               : 'This book is reserved for another patron!'}
           </div>
         </div>
@@ -100,7 +99,7 @@ const HoldDetectedPage = () => {
             <div className='text-[32px]'>Book Details</div>
           </div>
           <div className='flex flex-col gap-5'>
-            {displayHolds.map((hold: any, index: number) => (
+            {displayHoldsDetect.map((hold: any, index: number) => (
               <div key={index} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[#f39c12] border-l-[5px] shadow-sm'>
                 <div className='text-[50px] min-w-[50px] mr-5'>📙</div>
                 <div>

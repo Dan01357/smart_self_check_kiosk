@@ -8,9 +8,7 @@ import { useEffect } from "react";
 const Footer = () => {
   const location = useLocation();
   const path = location.pathname;
-  const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts, setDisplayCheckins, setDisplayCheckouts, setHolds, allHolds, API_BASE, allCheckouts, setAllHolds, setAllCheckouts, setPatrons } = useKiosk()
-
-
+  const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts, setDisplayCheckins, setDisplayCheckouts, setHolds, allHolds, API_BASE, allCheckouts, setAllHolds, setAllCheckouts, setPatrons, displayHolds } = useKiosk()
 
 
 
@@ -123,11 +121,7 @@ const Footer = () => {
     // 2. Identify which items being returned actually have holds
     // We filter displayCheckins to find items where a hold exists for that biblioId
 
-    const displayHolds = allHolds.filter(hold =>
-      displayCheckins.some(checkinItem =>
-        Number(checkinItem.biblioId) === Number(hold.biblio_id)
-      )
-    );
+
 
     // 3. Validation: If displayHolds is empty, it means no holds were detected
     const allValidated = displayHolds.length === 0;
@@ -176,7 +170,7 @@ const Footer = () => {
 
       // 3. Close and move on
       Swal.close();
-      navigate("/onholddetected", { state: { displayHolds } });
+      navigate("/onholddetected");
 
     }
   };

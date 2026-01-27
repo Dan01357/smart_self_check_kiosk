@@ -20,11 +20,14 @@ const CheckinPage = () => {
     setCheckouts,
     setBiblios,
     setItems,
-    patronId, 
-    API_BASE
+    patronId,
+    API_BASE,
+    allHolds,
+    setDisplayHolds,
+    displayHolds
   } = useKiosk();
 
-  // 1. EXACT FETCH LOGIC FROM ACCOUNT PAGE (Fastest updates)
+  // 1. Data Fetching Logic
   useEffect(() => {
     if (!patronId) return;
 
@@ -52,6 +55,15 @@ const CheckinPage = () => {
     fetchItems();
   }, [patronId, API_BASE, setCheckouts, setBiblios, setItems]);
 
+  // 2. IMMEDIATE HOLD DETECTION LOGIC
+  useEffect(() => {
+    const detectedHolds = allHolds.filter(hold =>
+      displayCheckins.some(checkinItem =>
+        Number(checkinItem.biblioId) === Number(hold.biblio_id)
+      )
+    );
+    setDisplayHolds(detectedHolds);
+  }, [displayCheckins, allHolds, setDisplayHolds]);
 
   const handleManualEntry = () => {
     openKeyboard((barcodeValue) => {
@@ -73,7 +85,7 @@ const CheckinPage = () => {
       const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
 
       const newReturn = {
-        biblioId:biblio.biblio_id,
+        biblioId: biblio.biblio_id,
         title: biblio?.title || "Unknown Title",
         barcode: barcodeValue,
         isOverdue: isActuallyOverdue,
@@ -116,24 +128,30 @@ const CheckinPage = () => {
           </div>
           <div className='flex flex-col gap-5'>
             {displayCheckins.map((scannedItem: any, index: number) => {
-              // 2. LIVE LOOKUP LOGIC: This ensures data updates instantly on the first refresh
               const itemInfo = items.find((i: any) => i.external_id === scannedItem.barcode);
               const checkoutInfo = checkouts.find((c: any) => c.item_id === itemInfo?.item_id);
 
-              // Use fresh data from checkout if available, otherwise fallback to scanned item data
               const finalDueDate = checkoutInfo ? checkoutInfo.due_date : scannedItem.dueDate;
               const isOverdue = new Date(finalDueDate) < new Date();
+              
+              // Determine if the specific item is on hold
+              const isOnHold = displayHolds.some((hold: any) => Number(hold.biblio_id) === Number(scannedItem.biblioId));
 
-              // Calculate days late using the fresh date
               const rawDiff = diffInDays({ ...scannedItem, dueDate: finalDueDate });
               const daysLate = Math.max(1, Math.abs(rawDiff));
 
               let statusColor = '#3498db';
               let statusEmoji = '📘';
 
-              if (isOverdue) {
+              // If either overdue or on hold, use the warning color
+              if (isOverdue || isOnHold) {
                 statusColor = '#e74c3c';
-                statusEmoji = '📕';
+                statusEmoji = isOverdue ? '📕' : '📘';
+              }
+
+              // Specific emoji for Hold takes priority
+              if (isOnHold) {
+                statusEmoji = '📙';
               }
 
               return (
@@ -148,15 +166,17 @@ const CheckinPage = () => {
                     <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{scannedItem.title}</div>
                     <div className='text-[20px] text-[rgb(127_140_141)]'>Barcode: {scannedItem.barcode}</div>
                     <div className='text-[20px] text-[rgb(127_140_141)]'>
-                      {isOverdue
-                        ? `${daysLate} ${daysLate === 1 ? 'day' : 'days'} overdue`
-                        : 'Returned on time'
+                      {isOnHold 
+                        ? 'On Hold' 
+                        : isOverdue
+                          ? `${daysLate} ${daysLate === 1 ? 'day' : 'days'} overdue`
+                          : 'Returned on time'
                       }
                     </div>
                   </div>
 
                   <div className='ml-auto text-[24px]' style={{ color: statusColor }}>
-                    {isOverdue ? '⚠️' : '✓'}
+                    {(isOverdue || isOnHold) ? '⚠️' : '✓'}
                   </div>
                 </div>
               );

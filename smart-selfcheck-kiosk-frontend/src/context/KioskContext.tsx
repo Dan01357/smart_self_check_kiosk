@@ -36,6 +36,8 @@ interface KioskContextType {
   patrons: any[];
   setPatrons: React.Dispatch<React.SetStateAction<any[]>>;
   API_BASE: string;
+  displayHolds:any[];
+  setDisplayHolds: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 const KioskContext = createContext<KioskContextType | undefined>(undefined);
@@ -64,6 +66,9 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
   const [displayCheckins, setDisplayCheckins] = useState<any[]>(() =>
     JSON.parse(localStorage.getItem("kiosk_display_checkins") || "[]")
   );
+   const [displayHolds, setDisplayHolds] = useState<any[]>(() =>
+    JSON.parse(localStorage.getItem("kiosk_display_holds") || "[]")
+  );
 
   const [showScanner, setShowScanner] = useState(false);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
@@ -80,12 +85,13 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
 
     // Persist global lists
     localStorage.setItem("kiosk_all_holds", JSON.stringify(allHolds));
+    localStorage.setItem("kiosk_display_holds", JSON.stringify(displayHolds));
     localStorage.setItem("kiosk_all_checkouts", JSON.stringify(allCheckouts));
     localStorage.setItem("kiosk_all_patrons", JSON.stringify(patrons));
 
     localStorage.setItem("kiosk_display_checkouts", JSON.stringify(displayCheckouts));
     localStorage.setItem("kiosk_display_checkins", JSON.stringify(displayCheckins));
-  }, [patronId, patronName, checkouts, biblios, items, holds, allHolds, allCheckouts, patrons, displayCheckouts, displayCheckins]);
+  }, [patronId, patronName, checkouts, biblios, items, holds, allHolds, allCheckouts, patrons, displayCheckouts, displayCheckins, displayHolds]);
 
   const logout = () => {
     setAuthorized(false);
@@ -100,6 +106,7 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
     setPatrons([]);
     setDisplayCheckouts([]);
     setDisplayCheckins([]);
+    setDisplayHolds([]);
     setIsKeyboardOpen(false);
     setShowScanner(false);
     localStorage.clear();
@@ -126,7 +133,7 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
       displayCheckins, setDisplayCheckins, patronName, setPatronName, 
       handleLoginSuccess, holds, setHolds, 
       allHolds, setAllHolds, allCheckouts, setAllCheckouts, patrons, setPatrons, // NEWLY EXPORTED
-      API_BASE
+      API_BASE, displayHolds, setDisplayHolds
     }}>
       {children}
     </KioskContext.Provider>
