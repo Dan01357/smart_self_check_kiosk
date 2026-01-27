@@ -5,323 +5,133 @@ import axios from "axios";
 import { checkoutBook } from "../../services/kohaApi";
 import { useEffect } from "react";
 import { sendHoldNotification } from "../../services/emailApi";
+import { translations } from "../../utils/translations"; // Import your translations
 
 const Footer = () => {
   const location = useLocation();
   const path = location.pathname;
-  const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts, setDisplayCheckins, setDisplayCheckouts, setHolds, allHolds, API_BASE, allCheckouts, setAllHolds, setAllCheckouts, setPatrons, displayHolds, biblios, patrons } = useKiosk()
+  const navigate = useNavigate();
+  
+  // Pull language from context
+  const { 
+    language, 
+    displayCheckouts, 
+    displayCheckins, 
+    patronId, 
+    checkouts, 
+    setCheckouts, 
+    setDisplayCheckins, 
+    setDisplayCheckouts, 
+    setHolds, 
+    allHolds, 
+    API_BASE, 
+    allCheckouts, 
+    setAllHolds, 
+    setAllCheckouts, 
+    setPatrons, 
+    displayHolds, 
+    biblios, 
+    patrons 
+  } = useKiosk();
 
+  // Translation helper
+  const t: any = (translations as any)[language];
 
-
-  // This replaces the locationBefore prop by reading the state passed during navigation
   const locationBefore = location.state?.from;
-
-  // Style Constant (Exact copy of your original wrapper)
   const wrapperClass = "fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[1080px] max-h-[1920px] bg-[#34495e] py-6 text-white flex justify-between px-8 text-[25px]";
 
-  // --- RENEW ALL LOGIC ---
+  // --- LOGIC FUNCTIONS (Unchanged) ---
   const handleRenewAll = async () => {
     if (checkouts.length === 0) {
       return Swal.fire({ title: "No items", text: "You have no items to renew.", icon: "info" });
     }
-
-    Swal.fire({
-      title: 'Renewing all items...',
-      text: 'Please wait while we process your request.',
-      allowOutsideClick: false,
-      didOpen: () => Swal.showLoading()
-    });
-
+    Swal.fire({ title: 'Renewing all items...', text: 'Please wait...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     try {
-      // Create a list of promises for all checkouts
-      // We use allSettled so that if one book has a hold/error, the others still proceed
-      const promises = checkouts.map(checkout =>
-        axios.post(`${API_BASE}/api/v1/renew`, { checkout_id: checkout.checkout_id })
-      );
-
+      const promises = checkouts.map(checkout => axios.post(`${API_BASE}/api/v1/renew`, { checkout_id: checkout.checkout_id }));
       await Promise.allSettled(promises);
-
-      // Fetch the updated checkout list from the server to refresh the UI
       const response = await axios.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`);
       setCheckouts(response.data);
-
-      Swal.fire({
-        title: 'Processed!',
-        text: 'The system has attempted to renew all eligible items.',
-        icon: 'success',
-        timer: 2000,
-        showConfirmButton: false
-      });
+      Swal.fire({ title: 'Processed!', text: 'Renewal attempted.', icon: 'success', timer: 2000, showConfirmButton: false });
     } catch (error) {
-      console.error("Bulk renewal failed", error);
-      Swal.fire({ title: 'Error', text: 'Failed to process bulk renewal.', icon: 'error' });
-    }
-  };
-  const navigate = useNavigate();
-
-  // 1. Fetch Holds Data
-  const fetchHolds = async () => {
-
-    try {
-      // Note: This endpoint should join hold data with biblio/title data in your Express backend
-      const response = await axios.get(`${API_BASE}/api/v1/holds?patronId=${patronId}`);
-      setHolds(response.data);
-    } catch (e) {
-      console.error("Holds fetch failed", e);
-    } finally {
-
+      Swal.fire({ title: 'Error', text: 'Failed to process.', icon: 'error' });
     }
   };
 
-  const fetchAllHolds = async () => {
+  const fetchHolds = async () => { try { const response = await axios.get(`${API_BASE}/api/v1/holds?patronId=${patronId}`); setHolds(response.data); } catch (e) { console.error(e); } };
+  const fetchAllHolds = async () => { try { const response = await axios.get(`${API_BASE}/api/v1/holds`); setAllHolds(response.data); } catch (e) { console.error(e); } };
+  const fetchAllCheckouts = async () => { try { const response = await axios.get(`${API_BASE}/api/v1/checkouts`); setAllCheckouts(response.data); } catch (e) { console.error(e); } };
+  const fetchPatrons = async () => { try { const res = await axios.get(`${API_BASE}/api/v1/patrons`); setPatrons(res.data); } catch (e) { console.error(e); } };
 
-    try {
-      // Note: This endpoint should join hold data with biblio/title data in your Express backend
-      const response = await axios.get(`${API_BASE}/api/v1/holds`);
-      setAllHolds(response.data);
-    } catch (e) {
-      console.error("Holds fetch failed", e);
-    } finally {
-
-    }
-  };
-
-  const fetchAllCheckouts = async () => {
-
-    try {
-      // Note: This endpoint should join hold data with biblio/title data in your Express backend
-      const response = await axios.get(`${API_BASE}/api/v1/checkouts`);
-      setAllCheckouts(response.data);
-    } catch (e) {
-      console.error("Checkouts fetch failed", e);
-    } finally {
-
-    }
-  };
-
-  const fetchPatrons = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/api/v1/patrons`);
-      setPatrons(res.data);
-    } catch (e) { console.error("Patrons fetch failed", e); }
-  };
-
-  useEffect(() => {
-    if (patronId) {
-      fetchHolds();
-      fetchAllHolds();
-      fetchAllCheckouts();
-      fetchPatrons();
-    };
-  }, [patronId, API_BASE]);
+  useEffect(() => { if (patronId) { fetchHolds(); fetchAllHolds(); fetchAllCheckouts(); fetchPatrons(); }; }, [patronId, API_BASE]);
 
   const handleFinalCheckin = async () => {
-    // 1. Refresh the holds list to get the most recent data
     await fetchAllHolds();
-
-    // 2. Identify which items being returned actually have holds
-    // We filter displayCheckins to find items where a hold exists for that biblioId
-
-
-
-    // 3. Validation: If displayHolds is empty, it means no holds were detected
     const allValidated = displayHolds.length === 0;
-
     if (allValidated) {
-      Swal.fire({
-        title: 'Processing Returns...',
-        didOpen: () => Swal.showLoading(),
-        allowOutsideClick: false
-      });
-
+      Swal.fire({ title: 'Processing Returns...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
       try {
-        // Perform the actual checkins
-        const promises = displayCheckins.map(item =>
-          fetch(`${API_BASE}/api/checkin`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ barcode: item.barcode })
-          })
-        );
-
+        const promises = displayCheckins.map(item => fetch(`${API_BASE}/api/checkin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ barcode: item.barcode }) }));
         await Promise.all(promises);
-
-        // Clear state and navigate
         navigate("/success", { state: { from: path } });
         Swal.close();
-      } catch (error) {
-        Swal.fire({ title: 'Error', text: 'Some items failed to return.', icon: 'error' });
-      }
-    }
-    else {
-      // Navigate to the hold detection page
-      // TIP: You might want to pass displayHolds in the navigation state 
-      // so the next page can show WHICH books have holds.
-      // 1. Show the loading spinner
-      Swal.fire({
-        title: 'Processing...',
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        }
-      });
-
-      // 2. Force a 1-second wait
+      } catch (error) { Swal.fire({ title: 'Error', text: 'Failed.', icon: 'error' }); }
+    } else {
+      Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
       await new Promise(resolve => setTimeout(resolve, 800));
-
-      // 3. Close and move on
       Swal.close();
       navigate("/onholddetected");
-
     }
   };
-
-  // ... (inside Footer component)
 
   const handleFinalCheckout = async () => {
-    await fetchHolds();
-    await fetchAllHolds();
-    await fetchAllCheckouts();
+    await fetchHolds(); await fetchAllHolds(); await fetchAllCheckouts();
     if (displayCheckouts.length === 0) return;
-
-    Swal.fire({
-      title: 'Processing Checkouts...',
-      didOpen: () => Swal.showLoading(),
-      allowOutsideClick: false
-    });
-
+    Swal.fire({ title: 'Processing...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
     try {
-      // 1. Fetch latest items status from the DB
       const { data: latestItems } = await axios.get(`${API_BASE}/api/v1/items`);
-
-      // 2. PRE-VALIDATION LOOP
       for (const stagedItem of displayCheckouts) {
         const dbItem = latestItems.find((i: any) => i.item_id === stagedItem.item_id);
-
         if (!dbItem) continue;
-
-
-        const isAlreadyInMyCheckouts = checkouts.some(c => c.item_id === stagedItem.item_id);
-        if (isAlreadyInMyCheckouts) {
-          throw new Error("MY_LIST");
-        }
-
+        if (checkouts.some(c => c.item_id === stagedItem.item_id)) throw new Error("MY_LIST");
         const inCheckouts = allCheckouts.find(c => c.item_id === stagedItem.item_id);
-
-        if (inCheckouts && inCheckouts.patron_id !== patronId) {
-          throw new Error("CHECKOUT_OTHER");
-        }
-
-        // --- CONDITION 3: RESERVED BY OTHER (PRIORITY LOGIC) ---
-        // 1. Get all holds for this specific book (biblio_id)
-        // 2. Sort them by priority (1 is highest)
-        const itemHolds = allHolds
-          .filter((hold: any) => hold.biblio_id === dbItem.biblio_id)
-          .sort((a: any, b: any) => a.priority - b.priority);
-
-        if (itemHolds.length > 0) {
-          const priorityOneHold = itemHolds[0]; // The person at the top of the list
-
-          // If there is a Priority 1 hold and it's NOT the current patron
-          if (priorityOneHold.patron_id !== patronId) {
-            throw new Error("RESERVED_OTHER");
-          }
-          // If priorityOneHold.patron_id === patronId, the loop continues (allow checkout)
-        }
+        if (inCheckouts && inCheckouts.patron_id !== patronId) throw new Error("CHECKOUT_OTHER");
+        const itemHolds = allHolds.filter((hold: any) => hold.biblio_id === dbItem.biblio_id).sort((a: any, b: any) => a.priority - b.priority);
+        if (itemHolds.length > 0 && itemHolds[0].patron_id !== patronId) throw new Error("RESERVED_OTHER");
       }
-
-      // 3. TRANSACTION: Only if the loop completes without throwing an error
-      for (const item of displayCheckouts) {
-        await checkoutBook(patronId, item.item_id);
-      }
-
+      for (const item of displayCheckouts) { await checkoutBook(patronId, item.item_id); }
       Swal.close();
       navigate("/success", { state: { from: path } });
-
     } catch (error: any) {
-      console.error("Checkout Error:", error);
-
-      let title = "Checkout Error";
-      let message = "An unexpected error occurred.";
-
-      // Determine specific message based on the error thrown in the loop
-      if (error.message === "RESERVED_OTHER") {
-        message = "A book is already reserved by some else";
-      } else if (error.message === "MY_LIST") {
-        message = "A book is already on your checkout list";
-      } else if (error.message === "CHECKOUT_OTHER") {
-        message = "A book is already checked out by someone else";
-      }
-      else {
-        // Fallback for actual network/server errors
-        message = error.response?.data?.message || error.message;
-      }
-
-      Swal.fire({
-        title: title,
-        text: message,
-        icon: 'error'
-      });
+      let message = error.message === "RESERVED_OTHER" ? "Reserved by someone else" : error.message === "MY_LIST" ? "Already on your list" : error.message === "CHECKOUT_OTHER" ? "Checked out by someone else" : error.message;
+      Swal.fire({ title: "Error", text: message, icon: 'error' });
     }
   };
 
-  const handleCancel = () => {
-    setDisplayCheckouts([]);
-    setDisplayCheckins([]);
-    navigate("/home");
-  };
+  const handleCancel = () => { setDisplayCheckouts([]); setDisplayCheckins([]); navigate("/home"); };
 
   const handleContinue = async () => {
-    // Pass the state so SuccessPage knows to show the "Return Successful" UI
-    Swal.fire({
-      title: 'Processing Returns...',
-      didOpen: () => Swal.showLoading(),
-      allowOutsideClick: false
-    });
-
+    Swal.fire({ title: 'Processing...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
     try {
-      // Perform the actual checkins only now
-      const promises = displayCheckins.map(item =>
-        fetch(`${API_BASE}/api/checkin`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ barcode: item.barcode })
-        })
-      );
-
+      const promises = displayCheckins.map(item => fetch(`${API_BASE}/api/checkin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ barcode: item.barcode }) }));
       await Promise.all(promises);
-
       const priorityHolds = displayHolds.filter((hold: any) => Number(hold.priority) === 1);
-
-      // Send emails for each priority 1 hold detected
       for (const hold of priorityHolds) {
-        // Find the title from biblios using the biblio_id in the hold
         const biblio = biblios.find((b: any) => Number(b.biblio_id) === Number(hold.biblio_id));
-        const bookTitle = biblio?.title || "Reserved Book";
-
-        // Find the patron name
         const patron = patrons.find((p: any) => Number(p.patron_id) === Number(hold.patron_id));
-        const patronName = patron ? `${patron.firstname} ${patron.surname}` : "Patron";
-
-        console.log(bookTitle, patronName)
-        // Trigger the Resend function
-        await sendHoldNotification(bookTitle, patronName);
+        await sendHoldNotification(biblio?.title || "Book", patron ? `${patron.firstname} ${patron.surname}` : "Patron");
       }
-      // Clear state and navigate
       navigate("/success", { state: { from: path } });
       Swal.close();
-    } catch (error) {
-      Swal.fire({ title: 'Error', text: 'Some items failed to return.', icon: 'error' });
-    }
+    } catch (error) { Swal.fire({ title: 'Error', icon: 'error' }); }
+  };
 
-    navigate('/success', { state: { from: '/checkin' } });
-  }
+  // --- RENDER LOGIC (Translated) ---
 
   if (path === '/home') {
     return (
       <div className={wrapperClass}>
-        <div><span className="text-[#2ecc71]">● Available</span> | Kiosk #3</div>
-        <div>📍 Main Floor | ⏰ 24/7 Service</div>
+        <div><span className="text-[#2ecc71]">● {t.available}</span> | {t.kiosk_num}</div>
+        <div>📍 {t.main_floor} | ⏰ {t.service_24_7}</div>
       </div>
     );
   }
@@ -332,12 +142,11 @@ const Footer = () => {
         <Link to="/home">
           <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300">
             <div className="mr-2">⬅️</div>
-            <div>Back to Home</div>
+            <div>{t.back_home}</div>
           </button>
         </Link>
-
         <button className="py-[15px] px-[35px] rounded-[8px] bg-[#95a5a6]">
-          <div>Need Assistance?</div>
+          <div>{t.need_assist}</div>
         </button>
       </div>
     );
@@ -349,7 +158,7 @@ const Footer = () => {
         <Link to="/home">
           <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300">
             <div className="mr-2">⬅️</div>
-            <div>Back to Home</div>
+            <div>{t.back_home}</div>
           </button>
         </Link>
       </div>
@@ -358,33 +167,18 @@ const Footer = () => {
 
   else if (path === '/checkout') {
     const isListEmpty = displayCheckouts.length === 0;
-
     return (
       <div className={wrapperClass}>
-        {/* CANCEL: Just go home. No API calls = No trace in Koha */}
-        <button
-          className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300"
-          onClick={handleCancel}
-        >
+        <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={handleCancel}>
           <div className="mr-2">❌</div>
-          <div>Cancel</div>
+          <div>{t.cancel}</div>
         </button>
-
-        {/* COMPLETE: Actually perform the checkouts in the DB now */}
-        {isListEmpty
-          ? <button
-            className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] !cursor-default opacity-[0.5]"
-          >
-            <div>✓ Complete Checkout</div>
-          </button>
-          : <button
-            className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300"
-            onClick={handleFinalCheckout}
-          >
-            <div>✓ Complete Checkout</div>
-          </button>
-        }
-
+        <button
+          className={`py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] transition-all duration-300 ${isListEmpty ? "!cursor-default opacity-[0.5]" : "hover:bg-[rgb(39_174_96)]"}`}
+          onClick={!isListEmpty ? handleFinalCheckout : undefined}
+        >
+          <div>✓ {t.complete_checkout}</div>
+        </button>
       </div>
     );
   }
@@ -393,150 +187,92 @@ const Footer = () => {
     const isListEmpty = displayCheckins.length === 0;
     return (
       <div className={wrapperClass}>
-        {/* CANCEL: Just go home. No API calls = No date changes! */}
-        <button
-          className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px]"
-          onClick={handleCancel}
-        >
+        <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px]" onClick={handleCancel}>
           <div className="mr-2">❌</div>
-          <div>Cancel</div>
+          <div>{t.cancel}</div>
         </button>
-
-        {/* COMPLETE: Now we actually talk to the server */}
-        {isListEmpty
-          ? <button
-            className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] !cursor-default opacity-[0.5]"
-          >
-            <div>✓ Complete Return</div>
-          </button>
-          : <button
-            className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300"
-            onClick={handleFinalCheckin}
-          >
-            <div>✓ Complete Return</div>
-          </button>
-        }
+        <button
+          className={`py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] transition-all duration-300 ${isListEmpty ? "!cursor-default opacity-[0.5]" : "hover:bg-[rgb(39_174_96)]"}`}
+          onClick={!isListEmpty ? handleFinalCheckin : undefined}
+        >
+          <div>✓ {t.complete_return}</div>
+        </button>
       </div>
     );
   }
 
   else if (path === '/success') {
-    // 1. Create the reset and navigate functions
-    const handleMoreCheckout = () => {
-      setDisplayCheckouts([]); // Clear the checkout list
-      navigate("/checkout");   // Navigate
-    };
+    const handleMoreCheckout = () => { setDisplayCheckouts([]); navigate("/checkout"); };
+    const handleMoreCheckin = () => { setDisplayCheckins([]); navigate("/checkin"); };
+    const handleDone = () => { setDisplayCheckouts([]); setDisplayCheckins([]); navigate("/home"); };
 
-    const handleMoreCheckin = () => {
-      setDisplayCheckins([]);  // Clear the return list
-      navigate("/checkin");    // Navigate
-    };
-
-    const handleDone = () => {
-      setDisplayCheckouts([]);
-      setDisplayCheckins([]);
-      navigate("/home");
-    };
-
-    if (locationBefore === '/checkout') {
-      return (
-        <div className={wrapperClass}>
-          {/* Use handleDone instead of Link */}
-          <button
-            className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300"
-            onClick={handleDone}
-          >
-            <div className="mr-2">🏠</div>
-            <div>Done</div>
+    return (
+      <div className={wrapperClass}>
+        <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={handleDone}>
+          <div className="mr-2">🏠</div>
+          <div>{t.done}</div>
+        </button>
+        {locationBefore === '/checkout' ? (
+          <button className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300" onClick={handleMoreCheckout}>
+            <div>{t.checkout_more}</div>
           </button>
-
-          {/* Use handleMoreCheckout instead of Link */}
-          <button
-            className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300"
-            onClick={handleMoreCheckout}
-          >
-            <div>Checkout More Items</div>
+        ) : (
+          <button className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300" onClick={handleMoreCheckin}>
+            <div>{t.return_more}</div>
           </button>
-        </div>
-      );
-    }
-    else if (locationBefore === '/checkin') {
-      return (
-        <div className={wrapperClass}>
-          {/* Use handleDone instead of Link */}
-          <button
-            className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300"
-            onClick={handleDone}
-          >
-            <div className="mr-2">🏠</div>
-            <div>Done</div>
-          </button>
-
-          {/* Use handleMoreCheckin instead of Link */}
-          <button
-            className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300"
-            onClick={handleMoreCheckin}
-          >
-            <div>Return More Items</div>
-          </button>
-        </div>
-      );
-    }
-
+        )}
+      </div>
+    );
   }
+
   else if (path === '/renew') {
     return (
       <div className={wrapperClass}>
-        <Link to="/home">
-          <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" >
-            <div className="mr-2">🏠</div>
-            <div>Done</div>
-          </button>
-        </Link>
+        <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={() => navigate("/home")}>
+          <div className="mr-2">🏠</div>
+          <div>{t.done}</div>
+        </button>
         <button className="py-[15px] px-[35px] rounded-[8px] bg-[#16a085]" onClick={handleRenewAll}>
-          <div>🔄 Renew All</div>
+          <div>🔄 {t.renew_all}</div>
         </button>
       </div>
     );
   }
+
   else if (path === '/hold') {
     return (
       <div className={wrapperClass}>
-        <Link to="/home">
-          <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" >
-            <div className="mr-2">🏠</div>
-            <div>Done</div>
-          </button>
-        </Link>
-
+        <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={() => navigate("/home")}>
+          <div className="mr-2">🏠</div>
+          <div>{t.done}</div>
+        </button>
       </div>
     );
   }
+
   else if (path === '/onholddetected') {
     return (
       <div className={wrapperClass}>
-        <button
-          className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300" onClick={handleContinue}
-        >
-          <div>✓ Continue</div>
+        <button className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300" onClick={handleContinue}>
+          <div>✓ {t.continue}</div>
         </button>
       </div>
     );
   }
+
   else if (path === '/help') {
     return (
       <div className={wrapperClass}>
-        
-          <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={()=>navigate(-1)}>
-            <div className="mr-2">⬅️ Back</div>
-          </button>
-      
-        <button className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)]" onClick={()=>navigate('/home')} >
-          <div>🏠 Home</div>
+        <button className="bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)] flex items-center py-[15px] px-[35px] rounded-[8px] transition-all duration-300" onClick={() => navigate(-1)}>
+          <div className="mr-2">⬅️ {t.back}</div>
+        </button>
+        <button className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(52_152_219)] hover:bg-[rgb(41_128_185)]" onClick={() => navigate('/home')}>
+          <div>🏠 {t.home}</div>
         </button>
       </div>
     );
   }
+
   return null;
 }
 

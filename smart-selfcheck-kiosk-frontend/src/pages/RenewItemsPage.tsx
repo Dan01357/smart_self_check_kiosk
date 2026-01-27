@@ -6,12 +6,14 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 import { formatDate } from '../utils/formatDate';
 import { diffInDaysAccountPage } from '../utils/dueDateFormulate';
+import { translations } from '../utils/translations'; // Import translations
 
 const RenewItemsPage = () => {
-  const { patronId, checkouts, setCheckouts, biblios, setBiblios, items, setItems, API_BASE } = useKiosk();
+  const { patronId, checkouts, setCheckouts, biblios, setBiblios, items, setItems, API_BASE, language } = useKiosk();
   
-
-  // 1. Initial Data Fetching (Same logic as Account Page)
+  // Translation helper
+  const t:any = (translations as any)[language ] || translations.EN;
+  // 1. Initial Data Fetching
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -33,55 +35,48 @@ const RenewItemsPage = () => {
   // 2. Renewal Handler
   const handleRenew = async (checkoutId: number, title: string) => {
     const result = await Swal.fire({
-      title: 'Confirm Renewal',
-      text: `Would you like to extend the due date for "${title}"?`,
+      title: t.confirm_renewal,
+      text: `${t.extend_ask} "${title}"?`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#3498db',
       cancelButtonColor: '#95a5a6',
-      confirmButtonText: 'Yes, Renew it'
+      confirmButtonText: t.yes_renew
     });
 
     if (result.isConfirmed) {
       Swal.showLoading();
       try {
-        // Calling the renewal endpoint (assumes you added this to your Express backend)
         const response = await axios.post(`${API_BASE}/api/v1/renew`, {
           checkout_id: checkoutId
         });
 
         if (response.data) {
           Swal.fire({
-            title: 'Renewal Success!',
-            text: `New due date: ${formatDate(response.data.due_date)}`,
+            title: t.renewal_success,
+            text: `${t.new_due_date}: ${formatDate(response.data.due_date)}`,
             icon: 'success',
             timer: 3000,
             showConfirmButton: false
           });
 
-          // Refresh the list to show the new due date
           const updatedCheckouts = await axios.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`);
           setCheckouts(updatedCheckouts.data);
         }
       } catch (error: any) {
-        // 1. Log the actual error to your browser console so you can see it!
-     
         const errorMsg = error.response?.data?.error || "";
+        let friendlyMessage = t.err_generic;
 
-        let friendlyMessage = "This item cannot be renewed at this time.";
-
-        // 2. Add more conditions based on common Koha error strings
         if (errorMsg.includes("too_many_holds")) {
-          friendlyMessage = "This item is reserved for another patron.";
+          friendlyMessage = t.err_reserved;
         } else if (errorMsg.includes("too_many_renewals")) {
-          friendlyMessage = "Maximum renewal limit reached.";
+          friendlyMessage = t.err_limit;
         } else if (errorMsg.includes("overdue") || errorMsg.includes("restriction")) {
-          // This is likely what is happening now
-          friendlyMessage = "Cannot renew an overdue item. Please see the librarian.";
+          friendlyMessage = t.err_overdue;
         }
 
         Swal.fire({
-          title: 'Renewal Blocked',
+          title: t.renewal_blocked,
           text: friendlyMessage,
           icon: 'error'
         });
@@ -94,37 +89,33 @@ const RenewItemsPage = () => {
       <Header />
 
       <div className='pt-60 flex p-[40px] flex-col overflow-auto pb-30'>
-        <div className='text-center text-[42px] mb-[35px] text-[#2c3e50] font-bold'>Renew Books</div>
+        <div className='text-center text-[42px] mb-[35px] text-[#2c3e50] font-bold'>{t.renew_books}</div>
 
-        {/* --- STATUS SUMMARY CARD --- */}
         <div className='bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[40px] text-white mb-[30px] shadow-lg'>
-          <div className='text-[36px] font-bold mb-[20px] text-center'>Renewal Eligibility</div>
+          <div className='text-[36px] font-bold mb-[20px] text-center'>{t.renewal_eligibility}</div>
           <div className='text-[24px] text-center opacity-90 mb-[30px]'>
-            Select an item below to extend your borrowing period.
+            {t.select_item_extend}
           </div>
           <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
-            <span>Renewable Items:</span>
+            <span>{t.renewable_items}</span>
             <span>{checkouts.length}</span>
           </div>
           <div className='flex justify-between py-[15px] text-[26px]'>
-            <span>Standard Extension:</span>
-            <span>+14 Days</span>
+            <span>{t.std_extension}</span>
+            <span>{t.plus_14_days}</span>
           </div>
         </div>
 
-        {/* --- ITEMS LIST --- */}
         <div className='bg-[rgb(236_240_241)] p-[30px] rounded-[15px]'>
           <div className='font-bold text-[rgb(44_62_80)] mb-6'>
-            <div className='text-[32px]'>Your Borrowed Books</div>
+            <div className='text-[32px]'>{t.your_borrowed_books}</div>
           </div>
 
           <div className='flex flex-col gap-5'>
             {checkouts.map((checkout: any) => {
-              // Lookup Title
               const itemInfo = (items as any[]).find((i: any) => i.item_id === checkout?.item_id);
               const biblioInfo = (biblios as any[]).find((b: any) => b.biblio_id === itemInfo?.biblio_id);
-              const title = biblioInfo?.title || "Unknown Title";
-
+              const title = biblioInfo?.title || t.loading_title;
               const isOverdue = diffInDaysAccountPage(checkout) <= 0;
 
               return (
@@ -136,26 +127,24 @@ const RenewItemsPage = () => {
                       {title}
                     </div>
                     <div className='text-[20px] text-[#7f8c8d] mb-2'>
-                      Current Due: {formatDate(checkout.due_date)}
+                      {t.current_due}: {formatDate(checkout.due_date)}
                     </div>
 
-                    {/* Status Badge */}
                     <div className='flex items-center gap-3'>
                       <span className={`text-[18px] px-3 py-1 rounded-full font-bold ${isOverdue ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                        {isOverdue ? 'Overdue' : 'Active Loan'}
+                        {isOverdue ? t.overdue_label : t.active_loan}
                       </span>
                       <span className='text-[18px] text-gray-400'>
-                        | Renewals used: {checkout.renewals_count || 0}
+                        | {t.renewals_used}: {checkout.renewals_count || 0}
                       </span>
                     </div>
                   </div>
 
-                  {/* Renew Button */}
                   <button
                     onClick={() => handleRenew(checkout.checkout_id, title)}
                     className='bg-[#3498db] hover:bg-[#2980b9] text-white px-[35px] py-[20px] rounded-[12px] text-[24px] font-bold transition-all active:scale-95 shadow-md flex items-center gap-2'
                   >
-                    🔄 Renew
+                    🔄 {t.renew_btn}
                   </button>
                 </div>
               );
@@ -163,19 +152,18 @@ const RenewItemsPage = () => {
 
             {checkouts.length === 0 && (
               <div className="text-center py-20 text-[28px] text-gray-500">
-                You have no items currently checked out.
+                {t.no_items_checked_out}
               </div>
             )}
           </div>
         </div>
 
-        {/* --- INFO BOX --- */}
         <div className='bg-[#e3f2fd] border-l-[5px] border-l-solid border-l-[#1565c0] rounded-[20px] p-[30px] mt-[30px]'>
           <div className="text-[26px] font-bold text-[#1565c0] mb-[10px] flex items-center gap-[10px]">
-            ℹ️ Renewal Policy
+            ℹ️ {t.renewal_policy}
           </div>
           <div className="text-[20px] text-[#1565c0] opacity-80">
-            Items cannot be renewed if they are reserved by another patron or if the maximum renewal limit has been reached.
+            {t.renewal_policy_text}
           </div>
         </div>
       </div>

@@ -7,9 +7,9 @@ import Lottie from "lottie-react";
 import animationData from "../assets/Scanning Document.json";
 import SimpleScanner from '../components/common/TestQrResult';
 import Swal from 'sweetalert2';
+import { translations } from '../utils/translations'; // Import
 
 const CheckoutPage = () => {
-  // Pulling all data directly from Context (sourced from LocalStorage)
   const {
     authorized,
     patronId,
@@ -18,12 +18,14 @@ const CheckoutPage = () => {
     displayCheckouts,
     setDisplayCheckouts,
     openKeyboard,
+    language // Get language from context
   } = useKiosk();
 
   const navigate = useNavigate();
 
+  // Translation helper
+  const t:any = (translations as any)[language ] || translations.EN; // Shortcut for translation
 
-  // Security Check based on LocalStorage data
   useEffect(() => {
     if (!authorized || !patronId) {
       navigate("/", { replace: true });
@@ -36,7 +38,7 @@ const CheckoutPage = () => {
 
       if (itemData) {
         if (displayCheckouts.some((i: any) => i.externalId === barcodeValue)) {
-          return Swal.fire({ title: 'Already Added', icon: 'info', timer: 1000, showConfirmButton: false });
+          return Swal.fire({ title: t.already_added, icon: 'info', timer: 1000, showConfirmButton: false });
         }
 
         const biblio: any = biblios.find((b: any) => b.biblio_id === itemData.biblio_id);
@@ -60,8 +62,8 @@ const CheckoutPage = () => {
         setDisplayCheckouts((prev: any) => [newSessionItem, ...prev]);
 
         Swal.fire({
-          title: 'Scanned',
-          text: `${newSessionItem.title} added to checkout list`,
+          title: t.scanned_swal,
+          text: `${newSessionItem.title} ${t.added_msg}`,
           icon: 'success',
           timer: 1500,
           showConfirmButton: false
@@ -69,22 +71,22 @@ const CheckoutPage = () => {
 
       } else {
         Swal.fire({
-          title: 'Not Found',
-          text: 'The barcode entered was not found in the system.',
+          title: t.not_found,
+          text: t.barcode_error,
           icon: 'warning'
         });
       }
     });
   };
+
   return (
     <div className='max-w-[1080px] min-h-[1920px] m-auto border-x border-x-solid border-x-gray-700'>
       <Header />
       <SimpleScanner />
       <div className='pt-60 pb-30'>
         <div className="m-auto flex flex-col justify-center items-center overflow-auto">
-          {/* Example of using retrieved patronName */}
           <div className="text-[42px] mb-[35px] font-[700]">
-            Place Items on RFID Reader
+            {t.place_items}
           </div>
 
           <div className="flex flex-col bg-gradient-to-br from-[rgb(30_58_95)] to-[rgb(44_95_158)] py-[50px] px-[200px] items-center rounded-[25px] border border-dashed border-[5px] border-[rgb(52_152_219)] m-[30px] overflow-hidden min-h-[400px] w-[1000px] cursor-pointer" onClick={handleManualEntry}>
@@ -93,19 +95,18 @@ const CheckoutPage = () => {
                 <Lottie animationData={animationData} loop={true} />
               </div>
             </div>
-            <div className='font-bold text-[36px] text-white'>Scanning for items</div>
+            <div className='font-bold text-[36px] text-white'>{t.scanning_items}</div>
             <div className='text-[26px] text-white text-center'>
-              Place books flat on the reader pad below / <br />
-              Click this panel to enter barcode manually
+              {t.scan_sub}
             </div>
           </div>
         </div>
 
         <div className='bg-[rgb(236_240_241)] m-[30px] p-[30px] rounded-[15px]'>
           <div className='font-bold text-[rgb(44_62_80)] flex items-center justify-between mb-4 fy-between'>
-            <div className='text-[32px]'>Items Scanned ({displayCheckouts.length})</div>
+            <div className='text-[32px]'>{t.items_scanned_label} ({displayCheckouts.length})</div>
             <div className='text-white bg-[#3498db] py-[8px] px-[20px] rounded-[20px] text-[24px]'>
-              {displayCheckouts.length === 1 ? '1 Item' : `${displayCheckouts.length} Items`}
+              {displayCheckouts.length === 1 ? t.one_item : `${displayCheckouts.length} ${t.multiple_items}`}
             </div>
           </div>
 
@@ -115,8 +116,8 @@ const CheckoutPage = () => {
                 <div className='text-[50px] min-w-[50px] mr-5'>📘</div>
                 <div>
                   <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{item.title}</div>
-                  <div className='text-[20px] text-[rgb(127_140_141)]'>Barcode: {item.externalId}</div>
-                  <div className='text-[20px] text-[rgb(127_140_141)]'>Due: {item.dueDate}</div>
+                  <div className='text-[20px] text-[rgb(127_140_141)]'>{t.barcode_label}: {item.externalId}</div>
+                  <div className='text-[20px] text-[rgb(127_140_141)]'>{t.due_label}: {item.dueDate}</div>
                 </div>
                 <div className='text-[rgb(46_204_113)] ml-auto'>✓</div>
               </div>

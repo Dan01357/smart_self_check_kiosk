@@ -7,6 +7,7 @@ import SimpleScanner from '../components/common/TestQrResult';
 import Swal from 'sweetalert2';
 import { useEffect } from 'react';
 import axios from 'axios';
+import { translations } from '../utils/translations'; // Import
 
 const CheckinPage = () => {
   const {
@@ -23,13 +24,15 @@ const CheckinPage = () => {
     API_BASE,
     allHolds,
     setDisplayHolds,
-    displayHolds
+    displayHolds,
+    language // Get language
   } = useKiosk();
 
-  // 1. Data Fetching Logic
+  const t:any = (translations as any)[language ] || translations.EN;
+
+  // 1. Data Fetching Logic (Unchanged)
   useEffect(() => {
     if (!patronId) return;
-
     const fetchCheckouts = async () => {
       try {
         const response = await axios.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`);
@@ -48,13 +51,12 @@ const CheckinPage = () => {
         setItems(response.data);
       } catch (e) { console.error("Items fetch failed", e); }
     }
-
     fetchCheckouts();
     fetchBiblios();
     fetchItems();
   }, [patronId, API_BASE, setCheckouts, setBiblios, setItems]);
 
-  // 2. IMMEDIATE HOLD DETECTION LOGIC
+  // 2. IMMEDIATE HOLD DETECTION LOGIC (Unchanged)
   useEffect(() => {
     const detectedHolds = allHolds.filter(hold =>
       displayCheckins.some(checkinItem =>
@@ -68,16 +70,16 @@ const CheckinPage = () => {
     openKeyboard((barcodeValue) => {
       const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
       if (!itemData) {
-        return Swal.fire({ title: 'Not Found', text: 'The barcode scanned was not found in the system', icon: 'warning' });
+        return Swal.fire({ title: t.not_found, text: t.barcode_error, icon: 'warning' });
       }
 
       if (displayCheckins.some((i: any) => i.barcode === barcodeValue)) {
-        return Swal.fire({ title: 'Already Added', icon: 'info', timer: 1000, showConfirmButton: false });
+        return Swal.fire({ title: t.already_added, icon: 'info', timer: 1000, showConfirmButton: false });
       }
 
       const currentCheckout = checkouts.find((c: any) => c.item_id === itemData.item_id);
       if (!currentCheckout) {
-        return Swal.fire({ title: 'Action Denied', text: 'A book is not in your checkout list.', icon: 'error' });
+        return Swal.fire({ title: t.action_denied, text: t.not_in_list, icon: 'error' });
       }
 
       const isActuallyOverdue = new Date(currentCheckout.due_date) < new Date();
@@ -92,7 +94,7 @@ const CheckinPage = () => {
       };
 
       setDisplayCheckins((prev: any) => [newReturn, ...prev]);
-      Swal.fire({ title: 'Scanned', text: `${newReturn.title} added to return list`, icon: 'success', timer: 1500, showConfirmButton: false });
+      Swal.fire({ title: t.scanned_swal, text: `${newReturn.title} ${t.added_to_return}`, icon: 'success', timer: 1500, showConfirmButton: false });
     });
   };
 
@@ -102,7 +104,7 @@ const CheckinPage = () => {
       <SimpleScanner />
       <div className='pt-60 pb-30'>
         <div className="m-auto flex flex-col justify-center items-center overflow-auto">
-          <div className="text-[42px] mb-[35px] font-[700]">Place Items on RFID Reader</div>
+          <div className="text-[42px] mb-[35px] font-[700]">{t.place_items}</div>
 
           <div
             className="flex flex-col bg-gradient-to-br from-[rgb(30_58_95)] to-[rgb(44_95_158)] py-[50px] px-[200px] items-center rounded-[25px] border border-dashed border-[5px] border-[rgb(52_152_219)] m-[30px] overflow-hidden min-h-[400px] w-[1000px] cursor-pointer"
@@ -113,51 +115,39 @@ const CheckinPage = () => {
                 <Lottie animationData={animationData} loop={true} />
               </div>
             </div>
-            <div className='font-bold text-[36px] text-white'>Scanning for returns</div>
-            <div className='text-[26px] text-white'>Place books flat on the reader pad below / <br /> Click this panel to enter barcode manually</div>
+            <div className='font-bold text-[36px] text-white'>{t.scanning_returns}</div>
+            <div className='text-[26px] text-white text-center'>{t.scan_sub}</div>
           </div>
         </div>
 
         <div className='bg-[rgb(236_240_241)] m-[30px] p-[30px] rounded-[15px]'>
           <div className='font-bold text-[rgb(44_62_80)] flex items-center justify-between mb-4'>
-            <div className='text-[32px]'>Items Being Returned ({displayCheckins.length})</div>
+            <div className='text-[32px]'>{t.items_returned_label} ({displayCheckins.length})</div>
             <div className='text-white bg-[#3498db] py-[8px] px-[20px] rounded-[20px] text-[24px]'>
-              {(displayCheckins.length === 0 || displayCheckins.length === 1) ? `${displayCheckins.length} Item` : `${displayCheckins.length} Items`}
+              {(displayCheckins.length === 0 || displayCheckins.length === 1) ? `${displayCheckins.length} ${t.one_item}` : `${displayCheckins.length} ${t.multiple_items}`}
             </div>
           </div>
           <div className='flex flex-col gap-5'>
             {displayCheckins.map((scannedItem: any, index: number) => {
               const itemInfo = items.find((i: any) => i.external_id === scannedItem.barcode);
               const checkoutInfo = checkouts.find((c: any) => c.item_id === itemInfo?.item_id);
-
               const finalDueDate = checkoutInfo ? checkoutInfo.due_date : scannedItem.dueDate;
               
-              // EXACT CALCULATION FIX (Normalization to Midnight)
               const today = new Date();
               today.setHours(0, 0, 0, 0);
               const dueDateObj = new Date(finalDueDate);
               dueDateObj.setHours(0, 0, 0, 0);
 
               const diffInDaysNormalized = Math.round((dueDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-              
               const isOverdue = diffInDaysNormalized < 0;
               const daysLate = Math.abs(diffInDaysNormalized);
-              
-              // Determine if the specific item is on hold
               const isOnHold = displayHolds.some((hold: any) => Number(hold.biblio_id) === Number(scannedItem.biblioId));
 
               let statusColor = '#3498db';
               let statusEmoji = '📘';
 
-              if (isOverdue) {
-                statusColor = '#e74c3c';
-                statusEmoji = '📕';
-              }
-
-              if (isOnHold) {
-                statusColor = '#f39c12';
-                statusEmoji = '📙';
-              }
+              if (isOverdue) { statusColor = '#e74c3c'; statusEmoji = '📕'; }
+              if (isOnHold) { statusColor = '#f39c12'; statusEmoji = '📙'; }
 
               return (
                 <div
@@ -166,20 +156,18 @@ const CheckinPage = () => {
                   style={{ borderLeftColor: statusColor }}
                 >
                   <div className='text-[50px] min-w-[50px] mr-5'>{statusEmoji}</div>
-
                   <div>
                     <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{scannedItem.title}</div>
-                    <div className='text-[20px] text-[rgb(127_140_141)]'>Barcode: {scannedItem.barcode}</div>
+                    <div className='text-[20px] text-[rgb(127_140_141)]'>{t.barcode_label}: {scannedItem.barcode}</div>
                     <div className='text-[20px] text-[rgb(127_140_141)]'>
                       {isOnHold 
-                        ? 'On Hold' 
+                        ? t.on_hold 
                         : isOverdue
-                          ? `${daysLate} ${daysLate === 1 ? 'day' : 'days'} overdue`
-                          : 'Returned on time'
+                          ? `${daysLate} ${daysLate === 1 ? t.day_overdue : t.days_overdue}`
+                          : t.returned_on_time
                       }
                     </div>
                   </div>
-
                   <div className='ml-auto text-[24px]' style={{ color: statusColor }}>
                     {(isOverdue || isOnHold) ? '⚠️' : '✓'}
                   </div>

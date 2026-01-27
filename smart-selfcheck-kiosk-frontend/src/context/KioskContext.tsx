@@ -36,8 +36,10 @@ interface KioskContextType {
   patrons: any[];
   setPatrons: React.Dispatch<React.SetStateAction<any[]>>;
   API_BASE: string;
-  displayHolds:any[];
+  displayHolds: any[];
   setDisplayHolds: React.Dispatch<React.SetStateAction<any[]>>;
+  language: 'EN' | 'JP' | 'KO';
+  setLanguage: React.Dispatch<React.SetStateAction<'EN' | 'JP' | 'KO'>>;
 }
 
 const KioskContext = createContext<KioskContextType | undefined>(undefined);
@@ -49,7 +51,7 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
   const [authorized, setAuthorized] = useState<boolean>(() => localStorage.getItem("kiosk_auth") === "true");
   const [patronId, setPatronId] = useState<number>(() => Number(localStorage.getItem("kiosk_patron_id")) || 0);
   const [patronName, setPatronName] = useState<string>(() => localStorage.getItem("kiosk_patron_name") || '');
-  
+
   const [checkouts, setCheckouts] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_checkouts") || "[]"));
   const [biblios, setBiblios] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_biblios") || "[]"));
   const [items, setItems] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_items") || "[]"));
@@ -66,7 +68,7 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
   const [displayCheckins, setDisplayCheckins] = useState<any[]>(() =>
     JSON.parse(localStorage.getItem("kiosk_display_checkins") || "[]")
   );
-   const [displayHolds, setDisplayHolds] = useState<any[]>(() =>
+  const [displayHolds, setDisplayHolds] = useState<any[]>(() =>
     JSON.parse(localStorage.getItem("kiosk_display_holds") || "[]")
   );
 
@@ -117,6 +119,8 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem("kiosk_auth", "true");
   }
 
+  const [language, setLanguage] = useState<'EN' | 'JP' | 'KO'>('EN');
+
   const openKeyboard = (onDone: (val: any) => void) => {
     setKeyboardCallback(() => onDone);
     setIsKeyboardOpen(true);
@@ -130,10 +134,10 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
       isKeyboardOpen, openKeyboard, closeKeyboard, keyboardCallback,
       checkouts, setCheckouts, biblios, setBiblios, items, setItems,
       displayCheckouts, setDisplayCheckouts, showScanner, setShowScanner,
-      displayCheckins, setDisplayCheckins, patronName, setPatronName, 
-      handleLoginSuccess, holds, setHolds, 
+      displayCheckins, setDisplayCheckins, patronName, setPatronName,
+      handleLoginSuccess, holds, setHolds,
       allHolds, setAllHolds, allCheckouts, setAllCheckouts, patrons, setPatrons, // NEWLY EXPORTED
-      API_BASE, displayHolds, setDisplayHolds
+      API_BASE, displayHolds, setDisplayHolds, language, setLanguage
     }}>
       {children}
     </KioskContext.Provider>

@@ -1,17 +1,21 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { UserBtn } from './UserBtn'
+import { UserBtn } from './UserBtn';
+import { useState } from 'react'; // Added
+import { translations } from "../../utils/translations";
+import { useKiosk } from "../../context/KioskContext";
+
 const Header = () => {
   const location = useLocation();
   const path = location.pathname;
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+  const { language, setLanguage } = useKiosk(); // Pull language from Context
+  const [isLangOpen, setIsLangOpen] = useState(false);
   
-  // This replaces the 'locationBefore' prop for the success page logic
   const fromPath = location.state?.from;
+  const t:any = (translations as any)[language ] || translations.EN; // Shortcut for translation
 
-  // Base Wrapper Style (Exact same as your original)
-  const wrapperClass = "fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[1080px] max-h-[1920px] bg-gradient-to-br from-[#667eea] to-[#764ba2] pt-7 pb-28 px-10 z-100";
+  const wrapperClass = "fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[1080px] max-h-[1920px] bg-gradient-to-br from-[#667eea] to-[#764ba2] pt-7 pb-28 px-10 z-[100]";
 
-  // Shared Components to keep code clean but styles identical
   const Logo = ({ title }: { title: string }) => (
     <div className="flex items-center font-bold flex-shrink-0 whitespace-nowrap ">
       <div className="bg-white px-3 rounded-[8px] mr-3">
@@ -24,25 +28,46 @@ const Header = () => {
   const HelpBtn = () => (
     <button className="border border-white border-2 text-[25px] px-7 py-2 rounded-[10px] flex items-center hover:bg-white hover:text-[#27ae60] transition-colors duration-300 bg-white/20" onClick={() => navigate('/help')}>
       <div className="mr-1">❓</div>
-      <div>Help</div>
+      <div>{t.help}</div>
     </button>
   );
 
   const LangBtn = () => (
-    <button className="border border-white border-2 text-[25px] px-8 py-2 rounded-[10px] flex items-center mr-4 hover:bg-white hover:text-[#27ae60] transition-colors duration-300 bg-white/20">
-      <div className="mr-1">🌐</div>
-      <div>EN</div>
-    </button>
+    <div className="relative">
+      <button 
+        className="border border-white border-2 text-[25px] px-8 py-2 rounded-[10px] flex items-center mr-4 hover:bg-white hover:text-[#27ae60] transition-colors duration-300 bg-white/20"
+        onClick={() => setIsLangOpen(!isLangOpen)}
+      >
+        <div className="mr-1">🌐</div>
+        <div>{language}</div>
+      </button>
+
+      {isLangOpen && (
+        <div className="absolute top-full mt-2 left-0 w-[150px] bg-white rounded-[10px] shadow-xl overflow-hidden z-[110]">
+          {['EN', 'JP', 'KO'].map((lang: any) => (
+            <button
+              key={lang}
+              className="w-full text-left px-6 py-4 text-[22px] text-gray-800 hover:bg-gray-100 border-b border-gray-100 last:border-none"
+              onClick={() => {
+                setLanguage(lang);
+                setIsLangOpen(false);
+              }}
+            >
+              {lang === 'EN' ? 'English' : lang === 'JP' ? '日本語' : '한국어'}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 
-  // --- LOGIC BLOCKS ---
-
+  // LOGIC BLOCKS using translated titles
   if (path === '/home') {
     return (
       <div className={wrapperClass}>
-        <div className="flex text-white justify-between">
-          <Logo title="Self Checkout" />
-          <div className="flex">
+        <div className="flex text-white justify-between items-center">
+          <Logo title={t.self_checkout} />
+          <div className="flex items-center">
             <LangBtn />
             <HelpBtn />
           </div>
@@ -54,8 +79,8 @@ const Header = () => {
   if (path === '/') {
     return (
       <div className={wrapperClass}>
-        <div className="flex text-white justify-between">
-          <Logo title="Login Required" />
+        <div className="flex text-white justify-between items-center">
+          <Logo title={t.login_required} />
           <div className="flex">
             <HelpBtn />
           </div>
@@ -67,8 +92,8 @@ const Header = () => {
   if (path === '/account') {
     return (
       <div className={wrapperClass}>
-        <div className="flex text-white justify-between">
-          <Logo title="My Account" />
+        <div className="flex text-white justify-between items-center">
+          <Logo title={t.my_account} />
           <div className="flex">
             <UserBtn />
             <HelpBtn />
@@ -82,7 +107,7 @@ const Header = () => {
     return (
       <div className={wrapperClass}>
         <div className="flex text-white justify-between items-center">
-          <Logo title="Checkout Mode" />
+          <Logo title={t.checkout_mode} />
           <div className="flex items-center justify-end min-w-0 gap-4">
             <UserBtn />
             <HelpBtn />
@@ -95,8 +120,8 @@ const Header = () => {
   if (path === '/checkin') {
     return (
       <div className={wrapperClass}>
-        <div className="flex text-white justify-between">
-          <Logo title="Return Mode" />
+        <div className="flex text-white justify-between items-center">
+          <Logo title={t.return_mode} />
           <div className="flex">
             <HelpBtn />
           </div>
@@ -106,12 +131,10 @@ const Header = () => {
   }
 
   if (path === '/success') {
-    // Determine title based on where they came from
-    const successTitle = fromPath === '/checkin' ? "Return Complete" : "Checkout Complete";
-
+    const successTitle = fromPath === '/checkin' ? t.return_complete : t.checkout_complete;
     return (
       <div className={wrapperClass}>
-        <div className="flex text-white justify-between">
+        <div className="flex text-white justify-between items-center">
           <Logo title={successTitle} />
           <div className="flex">
             <UserBtn />
@@ -124,8 +147,8 @@ const Header = () => {
   if (path === '/renew') {
     return (
       <div className={wrapperClass}>
-        <div className="flex text-white justify-between">
-          <Logo title="Renewal Mode" />
+        <div className="flex text-white justify-between items-center">
+          <Logo title={t.renewal_mode} />
           <div className="flex">
             <HelpBtn />
           </div>
@@ -137,8 +160,8 @@ const Header = () => {
   if (path === '/hold') {
     return (
       <div className={wrapperClass}>
-        <div className="flex text-white justify-between">
-          <Logo title="Reservation Mode" />
+        <div className="flex text-white justify-between items-center">
+          <Logo title={t.reservation_mode} />
           <div className="flex">
             <HelpBtn />
           </div>
@@ -150,8 +173,8 @@ const Header = () => {
   if (path === '/onholddetected') {
     return (
       <div className={wrapperClass}>
-        <div className="flex text-white justify-between">
-          <Logo title="On Hold Detected" />
+        <div className="flex text-white justify-between items-center">
+          <Logo title={t.hold_detected} />
           <div className="flex">
             <HelpBtn  />
           </div>
@@ -163,11 +186,9 @@ const Header = () => {
   if (path === '/help') {
     return (
       <div className={wrapperClass}>
-        <div className="flex text-white justify-between">
-          <Logo title="Help & Support" />
-          <div className="flex">
-           
-          </div>
+        <div className="flex text-white justify-between items-center">
+          <Logo title={t.help_support} />
+          <div className="flex"></div>
         </div>
       </div>
     );
