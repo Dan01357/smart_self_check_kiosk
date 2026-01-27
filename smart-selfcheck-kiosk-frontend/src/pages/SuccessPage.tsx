@@ -9,13 +9,19 @@ import { diffInDays } from '../utils/dueDateFormulate';
 const SuccessPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { displayCheckouts, setDisplayCheckouts, displayCheckins, setDisplayCheckins } = useKiosk()
+  const { displayCheckouts, setDisplayCheckouts, displayCheckins, setDisplayCheckins, displayHolds } = useKiosk()
   const locationBefore = location.state?.from;
 
+  // --- CALCULATIONS ---
   const overdueCount = displayCheckins.reduce((count, item) => {
     return item.isOverdue === true ? count + 1 : count;
   }, 0);
-  const notOverdueCount = displayCheckins.length - overdueCount
+
+  const holdCount = displayCheckins.filter(item =>
+    displayHolds.some((hold: any) => Number(hold.biblio_id) === Number(item.biblioId))
+  ).length;
+
+  const notOverdueCount = displayCheckins.length - overdueCount;
 
   const handlePrint = () => {
     setTimeout(() => {
@@ -131,7 +137,7 @@ const SuccessPage = () => {
             </div>
             <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30  text-[26px]'>
               <span>On Hold:</span>
-              <span>{notOverdueCount > 1 ? `${notOverdueCount} items` : `${notOverdueCount} item`}</span>
+              <span>{holdCount > 1 ? `${holdCount} items` : `${holdCount} item`}</span>
             </div>
             <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
               <span>Overdue:</span>
@@ -150,16 +156,23 @@ const SuccessPage = () => {
               {displayCheckins && displayCheckins.length > 0 ? displayCheckins.map((displayCheckin, index) => {
                 const now = new Date();
                 
-                // BASE DESIGN LOGIC ON CHECKINPAGE
                 const rawDiff = diffInDays(displayCheckin);
                 const daysLate = Math.max(1, Math.abs(rawDiff));
 
-                let statusColor = '#3498db'; // Default Blue (On time)
+                const isOnHold = displayHolds.some((hold: any) => Number(hold.biblio_id) === Number(displayCheckin.biblioId));
+
+                let statusColor = '#3498db'; // Default Blue
                 let statusEmoji = '📘';
 
                 if (displayCheckin.isOverdue) {
                     statusColor = '#e74c3c'; // Red
                     statusEmoji = '📕';
+                }
+
+                // Hold Color and Emoji takes priority (#f39c12)
+                if (isOnHold) {
+                  statusColor = '#f39c12';
+                  statusEmoji = '📙';
                 }
 
                 return (
@@ -173,7 +186,11 @@ const SuccessPage = () => {
                       <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{displayCheckin.title}</div>
                       <div className='text-[20px] text-[rgb(127_140_141)]'>Returned on: {formatDate(now)} </div>
                       
-                      {displayCheckin.isOverdue ? (
+                      {isOnHold ? (
+                        <div className='text-[22px] font-bold' style={{ color: statusColor }}>
+                          On Hold
+                        </div>
+                      ) : displayCheckin.isOverdue ? (
                         <div className='text-[22px] font-bold' style={{ color: statusColor }}>
                           {daysLate === 1 ? `1 day late` : `${daysLate} days late`}
                         </div>
@@ -184,7 +201,7 @@ const SuccessPage = () => {
                       )}
                     </div>
                     <div className='ml-auto text-[24px]' style={{ color: statusColor }}>
-                      {displayCheckin.isOverdue ? '⚠️' : '✓'}
+                      {(displayCheckin.isOverdue || isOnHold) ? '⚠️' : '✓'}
                     </div>
                   </div>
                 );
