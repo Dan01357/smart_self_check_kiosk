@@ -13,5 +13,23 @@ export default defineConfig({
         secure: false,
       }
     }
-  }
+  },
+  resolve: {
+    alias: {
+      // This redirects lottie-web to the light version
+      'lottie-web': 'lottie-web/build/player/lottie_light.js',
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Put lottie into a separate chunk named 'vendor-lottie'
+          'vendor-lottie': ['lottie-react'],
+          // Put react and other core libraries into 'vendor-core'
+          'vendor-core': ['react', 'react-dom', 'react-router-dom'],
+        },
+      },
+    },
+  },
 })

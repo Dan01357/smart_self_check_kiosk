@@ -1,51 +1,63 @@
+import { lazy, Suspense } from "react"; // Added lazy and Suspense
 import { Route, Routes } from "react-router-dom";
-import HomePage from "./pages/HomePage";
-import LoginPage from "./pages/LoginPage";
-import CheckinPage from "./pages/CheckinPage";
-import CheckoutPage from "./pages/CheckoutPage";
-import SuccessPage from "./pages/SuccessPage";
-import AccountPage from "./pages/AccountPage";
+
+// 1. Keep non-page components as regular imports (they are small and needed for logic)
 import ProtectedRoute from "./components/auth/ProtectedRoute";
-import NotFound from "./pages/NotFound";
-import KeyboardPad from "./components/common/KeyboardPad";
-import MyQRCode from "./pages/Qr";
-import RenewItemsPage from "./pages/RenewItemsPage";
 import PublicRoute from "./components/auth/PublicRoute";
-import HoldsPage from "./pages/HoldsPage";
-import HoldDetectedPage from "./pages/HoldDetectedPage";
-import HelpPage from "./pages/HelpPage";
-// import Try from "./Try";
+import KeyboardPad from "./components/common/KeyboardPad";
+
+// 2. Lazy load all Page components
+const HomePage = lazy(() => import("./pages/HomePage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const CheckinPage = lazy(() => import("./pages/CheckinPage"));
+const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
+const SuccessPage = lazy(() => import("./pages/SuccessPage"));
+const AccountPage = lazy(() => import("./pages/AccountPage"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const MyQRCode = lazy(() => import("./pages/Qr"));
+const RenewItemsPage = lazy(() => import("./pages/RenewItemsPage"));
+const HoldsPage = lazy(() => import("./pages/HoldsPage"));
+const HoldDetectedPage = lazy(() => import("./pages/HoldDetectedPage"));
+const HelpPage = lazy(() => import("./pages/HelpPage"));
+
+// Optional: A simple loading component to show during the split-second transition
+const PageLoader = () => (
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.5rem', fontWeight: 'bold' }}>
+    Loading...
+  </div>
+);
 
 function App() {
   return (
     <>
-      <Routes>
-        {/* Guest only routes (Redirect to /home if already logged in) */}
-        <Route element={<PublicRoute />}>
-          <Route path="/" element={<LoginPage />} />
-          <Route path="/qr" element={<MyQRCode />} />
-        </Route>
-        {/* Protected Routes (Wrapper) */}
-        <Route element={<ProtectedRoute />}>
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/success" element={<SuccessPage />} />
-          <Route path="/checkin" element={<CheckinPage />} />
-          <Route path="/hold" element={<HoldsPage />} />
-          <Route path="/account" element={<AccountPage />} />
-          <Route path="/renew" element={<RenewItemsPage />} />
-          <Route path="/onholddetected" element={<HoldDetectedPage />} />
-          <Route path="/help" element={<HelpPage />} />
-        </Route>
+      {/* 3. Wrap Routes in Suspense to handle the loading state of lazy components */}
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Guest only routes */}
+          <Route element={<PublicRoute />}>
+            <Route path="/" element={<LoginPage />} />
+            <Route path="/qr" element={<MyQRCode />} />
+          </Route>
 
-        {/* 404 */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+          {/* Protected Routes */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/success" element={<SuccessPage />} />
+            <Route path="/checkin" element={<CheckinPage />} />
+            <Route path="/hold" element={<HoldsPage />} />
+            <Route path="/account" element={<AccountPage />} />
+            <Route path="/renew" element={<RenewItemsPage />} />
+            <Route path="/onholddetected" element={<HoldDetectedPage />} />
+            <Route path="/help" element={<HelpPage />} />
+          </Route>
 
-      {/* 
-         This is now global. 
-         It has no props because it reads 'isKeyboardOpen' from Context.
-      */}
+          {/* 404 */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+
+      {/* Global Keyboard */}
       <KeyboardPad />
     </>
   );
