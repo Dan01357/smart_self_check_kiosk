@@ -4,7 +4,6 @@ import Lottie from "lottie-react";
 import animationData from "../assets/Scanning Document.json";
 import { useKiosk } from '../context/KioskContext';
 import SimpleScanner from '../components/common/TestQrResult';
-import { diffInDays } from '../utils/dueDateFormulate';
 import Swal from 'sweetalert2';
 import { useEffect } from 'react';
 import axios from 'axios';
@@ -132,25 +131,31 @@ const CheckinPage = () => {
               const checkoutInfo = checkouts.find((c: any) => c.item_id === itemInfo?.item_id);
 
               const finalDueDate = checkoutInfo ? checkoutInfo.due_date : scannedItem.dueDate;
-              const isOverdue = new Date(finalDueDate) < new Date();
+              
+              // EXACT CALCULATION FIX (Normalization to Midnight)
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const dueDateObj = new Date(finalDueDate);
+              dueDateObj.setHours(0, 0, 0, 0);
+
+              const diffInDaysNormalized = Math.round((dueDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+              
+              const isOverdue = diffInDaysNormalized < 0;
+              const daysLate = Math.abs(diffInDaysNormalized);
               
               // Determine if the specific item is on hold
               const isOnHold = displayHolds.some((hold: any) => Number(hold.biblio_id) === Number(scannedItem.biblioId));
 
-              const rawDiff = diffInDays({ ...scannedItem, dueDate: finalDueDate });
-              const daysLate = Math.max(1, Math.abs(rawDiff));
-
               let statusColor = '#3498db';
               let statusEmoji = '📘';
 
-              // If either overdue or on hold, use the warning color
-              if (isOverdue || isOnHold) {
+              if (isOverdue) {
                 statusColor = '#e74c3c';
-                statusEmoji = isOverdue ? '📕' : '📘';
+                statusEmoji = '📕';
               }
 
-              // Specific emoji for Hold takes priority
               if (isOnHold) {
+                statusColor = '#f39c12';
                 statusEmoji = '📙';
               }
 

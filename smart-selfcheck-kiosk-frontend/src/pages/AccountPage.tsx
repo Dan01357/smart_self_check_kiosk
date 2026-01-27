@@ -4,7 +4,6 @@ import { useKiosk } from '../context/KioskContext'
 import { useEffect } from 'react'
 import axios from 'axios'
 import { formatDate } from '../utils/formatDate'
-import { diffInDaysAccountPage } from '../utils/dueDateFormulate'
 
 const AccountPage = () => {
   const {
@@ -18,8 +17,8 @@ const AccountPage = () => {
     API_BASE,
     setHolds,
     holds,
-    allHolds,      // Added
-    setAllHolds    // Added
+    allHolds,
+    setAllHolds
   } = useKiosk()
 
   useEffect(() => {
@@ -66,17 +65,19 @@ const AccountPage = () => {
 
     fetchCheckouts();
     fetchHolds();
-    fetchAllHolds(); // Added
+    fetchAllHolds();
     fetchBiblios();
     fetchItems();
 
   }, [patronId, API_BASE]);
 
-
+  // Normalized logic for the Status Card summary
   const totalOverdueBooks = checkouts.reduce((totalOverdue, book) => {
-    const now = new Date()
-    const dueDate = new Date(book.due_date)
-    return dueDate < now ? totalOverdue + 1 : totalOverdue
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(book.due_date);
+    dueDate.setHours(0, 0, 0, 0);
+    return dueDate < today ? totalOverdue + 1 : totalOverdue
   }, 0)
 
   const getHoldDisplay = (hold: any) => {
@@ -132,31 +133,37 @@ const AccountPage = () => {
               const item = (items as any[]).find((i: any) => i.item_id === checkout?.item_id);
               const biblio = (biblios as any[]).find((b: any) => b.biblio_id === item?.biblio_id);
 
-              // HOLD DETECTION: Check if someone else has a hold on this book
+              // HOLD DETECTION
               const isOnHold = allHolds.some((hold: any) =>
                 Number(hold.biblio_id) === Number(biblio?.biblio_id) &&
                 Number(hold.patron_id) !== Number(patronId)
               );
 
-              const diff = diffInDaysAccountPage(checkout);
-              const isOverdue = diff <= 0;
-              const daysLate = Math.max(1, Math.abs(diff));
+              // EXACT CALCULATION FIX (Normalization to Midnight)
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const dueDateObj = new Date(checkout.due_date);
+              dueDateObj.setHours(0, 0, 0, 0);
+
+              const diffInDaysNormalized = Math.round((dueDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+              
+              const isOverdue = diffInDaysNormalized < 0;
+              const daysLate = Math.abs(diffInDaysNormalized);
+              const daysLeft = diffInDaysNormalized;
 
               let statusColor = '#3498db';
               let statusEmoji = '📘';
 
-              // Logic matches CheckinPage: if overdue or on hold, use red warning theme
-              // 1. Check Overdue (Red)
               if (isOverdue) {
                 statusColor = '#e74c3c';
                 statusEmoji = '📕';
               }
 
-              // 2. Check On Hold (Orange - overrides color)
               if (isOnHold) {
                 statusColor = '#f39c12';
                 statusEmoji = '📙';
               }
+
               return (
                 <div key={checkout.checkout_id} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[8px]' style={{ borderLeftColor: statusColor }}>
                   <div className='text-[50px] min-w-[50px] mr-5'>{statusEmoji}</div>
@@ -168,7 +175,7 @@ const AccountPage = () => {
                         ? 'On Hold'
                         : isOverdue
                           ? `${daysLate} ${daysLate === 1 ? 'day' : 'days'} overdue`
-                          : `${diff} days left`
+                          : `${daysLeft} days left`
                       }
                     </div>
                   </div>
