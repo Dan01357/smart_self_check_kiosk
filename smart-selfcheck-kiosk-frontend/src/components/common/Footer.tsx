@@ -4,11 +4,12 @@ import Swal from "sweetalert2";
 import axios from "axios";
 import { checkoutBook } from "../../services/kohaApi";
 import { useEffect } from "react";
+import { sendHoldNotification } from "../../services/emailApi";
 
 const Footer = () => {
   const location = useLocation();
   const path = location.pathname;
-  const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts, setDisplayCheckins, setDisplayCheckouts, setHolds, allHolds, API_BASE, allCheckouts, setAllHolds, setAllCheckouts, setPatrons, displayHolds } = useKiosk()
+  const { displayCheckouts, displayCheckins, patronId, checkouts, setCheckouts, setDisplayCheckins, setDisplayCheckouts, setHolds, allHolds, API_BASE, allCheckouts, setAllHolds, setAllCheckouts, setPatrons, displayHolds, biblios, patrons } = useKiosk()
 
 
 
@@ -289,6 +290,23 @@ const Footer = () => {
       );
 
       await Promise.all(promises);
+
+      const priorityHolds = displayHolds.filter((hold: any) => Number(hold.priority) === 1);
+
+      // Send emails for each priority 1 hold detected
+      for (const hold of priorityHolds) {
+        // Find the title from biblios using the biblio_id in the hold
+        const biblio = biblios.find((b: any) => Number(b.biblio_id) === Number(hold.biblio_id));
+        const bookTitle = biblio?.title || "Reserved Book";
+
+        // Find the patron name
+        const patron = patrons.find((p: any) => Number(p.patron_id) === Number(hold.patron_id));
+        const patronName = patron ? `${patron.firstname} ${patron.surname}` : "Patron";
+
+        console.log(bookTitle, patronName)
+        // Trigger the Resend function
+        await sendHoldNotification(bookTitle, patronName);
+      }
       // Clear state and navigate
       navigate("/success", { state: { from: path } });
       Swal.close();

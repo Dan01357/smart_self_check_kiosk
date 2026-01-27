@@ -309,6 +309,46 @@ app.delete('/api/v1/holds', async (req, res) => {
         res.status(status).json({ error: msg });
     }
 });
+
+
+// backend/server.js or routes/email.js
+import { Resend } from "resend";
+const resend = new Resend('re_QEgYTzMs_PEvRVUoUqmpQr5wbzouhgcDm');
+
+app.post('/api/v1/send-hold-email', async (req, res) => {
+  const { bookTitle, patronName } = req.body;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: 'NTEK Koha <onboarding@resend.dev>',
+      to: ['daniloalvaro031717@gmail.com'],
+      subject: `Book Ready: ${bookTitle}`,
+      html: `
+        <div style="font-family: sans-serif; color: #2c3e50; line-height: 1.6;">
+          <h2 style="color: #e65100;">Hello ${patronName},</h2>
+          <p>The book you reserved is now ready for pickup!</p>
+          <div style="background: #fdf2e9; padding: 20px; border-left: 5px solid #f39c12; margin: 20px 0;">
+            <strong>Book Title:</strong> ${bookTitle}<br />
+            <strong>Status:</strong> Routed to Hold Shelf
+          </div>
+          <p><strong>Instructions:</strong></p>
+          <p>This book has been reserved by you. It has been automatically routed to the Hold Shelf for pickup.</p>
+          <p style="background: #e3f2fd; padding: 15px; border-radius: 8px; color: #0d47a1;">
+            ✅ <strong>No Action Required:</strong> You will find the book at the pickup shelf.
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+          <p style="font-size: 12px; color: #7f8c8d;">NTEK Koha Library Kiosk Service</p>
+        </div>
+      `,
+    });
+
+    if (error) return res.status(400).json({ error });
+    res.json({ data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- START SERVER ---
 app.listen(4040, "0.0.0.0", () => {
     console.log("SUCCESS: Backend Server listening on port 4040...");
