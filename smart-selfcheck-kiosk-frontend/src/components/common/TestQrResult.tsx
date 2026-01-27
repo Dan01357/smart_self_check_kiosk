@@ -5,19 +5,23 @@ import Swal from 'sweetalert2';
 import { useKiosk } from '../../context/KioskContext';
 import { api, postDataLogin } from '../../../app';
 import { useLocation, useNavigate } from 'react-router';
+import { translations } from '../../utils/translations'; // Import
 
 function SimpleScanner() {
   const scanBuffer = useRef("");
   const {
-   setPatronId, setShowScanner, patronId,
-    setItems, items, setCheckouts, checkouts, biblios, setBiblios, // added 'checkouts' here
-    setDisplayCheckouts, setDisplayCheckins, displayCheckouts, setPatronName, displayCheckins, handleLoginSuccess, API_BASE
+    setPatronId, setShowScanner, patronId,
+    setItems, items, setCheckouts, checkouts, biblios, setBiblios,
+    setDisplayCheckouts, setDisplayCheckins, displayCheckouts, setPatronName, 
+    displayCheckins, handleLoginSuccess, API_BASE, language // Get language
   } = useKiosk();
 
   const navigate = useNavigate();
   const location = useLocation();
-
   const currentLocation = location.pathname;
+
+  // Translation helper
+  const t:any = (translations as any)[language ] || translations.EN;
 
   // --- Centralized Data Fetching ---
   useEffect(() => {
@@ -50,103 +54,99 @@ function SimpleScanner() {
         setPatronId(response.patron_id);
         setPatronName(response.patron_name)
         handleLoginSuccess()
-        Swal.fire({ title: 'Submitted!', text: `Login successful`, icon: 'success', timer: 1500, showConfirmButton: false });
+        Swal.fire({ title: t.login_success_title, text: t.login_success_text, icon: 'success', timer: 1500, showConfirmButton: false });
         navigate("/checkout", { replace: true, state: location.state });
       } else {
-        Swal.fire({ title: 'Invalid!', text: `Card ${cardNumber} not found`, icon: 'error', timer: 1500, showConfirmButton: false });
+        Swal.fire({ title: t.login_invalid_title, text: `${t.card_label} ${cardNumber} ${t.not_found}`, icon: 'error', timer: 1500, showConfirmButton: false });
       }
     } catch (error) {
-      Swal.fire({ title: 'Error!', text: 'Login failed.', icon: 'error' });
+      Swal.fire({ title: t.login_error_title, text: t.login_failed_err, icon: 'error' });
     }
   };
 
-  // ... (inside SimpleScanner component, update handleCheckoutLogic)
+  const handleCheckoutLogic = useCallback(async (barcodeValue: string) => {
+    const itemData: any = items.find((item: any) => barcodeValue === item.external_id);
 
-const handleCheckoutLogic = useCallback(async (barcodeValue: string) => {
-  const itemData: any = items.find((item: any) => barcodeValue === item.external_id);
+    if (!itemData) {
+      return Swal.fire({ title: t.not_found, text: t.barcode_error, icon: 'warning' });
+    }
 
-  if (!itemData) {
-    return Swal.fire({ title: 'Not Found', text: 'The barcode scanned was not found in the system.', icon: 'warning' });
-  }
+    if (itemData.checkout_id || itemData.onloan) {
+      return Swal.fire({ 
+        title: t.action_denied, 
+        text: `"${itemData.external_id}" ${t.already_checked_out_text}`, 
+        icon: 'error' 
+      });
+    }
 
-  // NEW: Check if the item is already checked out (onloan) in the system
-  if (itemData.checkout_id || itemData.onloan) {
-    return Swal.fire({ 
-      title: 'Action Denied', 
-      text: `"${itemData.external_id}" is already checked out.`, 
-      icon: 'error' 
+    if (displayCheckouts.some((i: any) => i.externalId === barcodeValue)) {
+      return Swal.fire({ title: t.already_added, icon: 'info', timer: 1000, showConfirmButton: false });
+    }
+
+    const biblio: any = biblios.find((b: any) => b.biblio_id === itemData.biblio_id);
+
+    const estDate = new Date();
+    estDate.setDate(estDate.getDate() + 14);
+    const formattedEstDue = estDate.toLocaleDateString('en-US', {
+      month: 'short', day: '2-digit', year: 'numeric'
     });
-  }
 
-  if (displayCheckouts.some((i: any) => i.externalId === barcodeValue)) {
-    return Swal.fire({ title: 'Already Added', icon: 'info', timer: 1000, showConfirmButton: false });
-  }
+    const newSessionItem = {
+      item_id: itemData.item_id,
+      title: biblio?.title || t.loading_title,
+      externalId: itemData.external_id || "No Barcode",
+      dueDate: formattedEstDue,
+      checkoutDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+    };
 
-  const biblio: any = biblios.find((b: any) => b.biblio_id === itemData.biblio_id);
+    setDisplayCheckouts((prev: any) => [newSessionItem, ...prev]);
 
-  const estDate = new Date();
-  estDate.setDate(estDate.getDate() + 14);
-  const formattedEstDue = estDate.toLocaleDateString('en-US', {
-    month: 'short', day: '2-digit', year: 'numeric'
-  });
-
-  const newSessionItem = {
-    item_id: itemData.item_id,
-    title: biblio?.title || "Unknown Title",
-    externalId: itemData.external_id || "No Barcode",
-    dueDate: formattedEstDue,
-    checkoutDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-  };
-
-  setDisplayCheckouts((prev: any) => [newSessionItem, ...prev]);
-
-  Swal.fire({
-    title: 'Scanned',
-    text: `${newSessionItem.title} added to checkout list`,
-    icon: 'success',
-    timer: 1500,
-    showConfirmButton: false
-  });
-}, [items, biblios, displayCheckouts]);
+    Swal.fire({
+      title: t.scanned_swal,
+      text: `${newSessionItem.title} ${t.added_msg}`,
+      icon: 'success',
+      timer: 1500,
+      showConfirmButton: false
+    });
+  }, [items, biblios, displayCheckouts, t]);
 
   const handleCheckinLogic = useCallback(async (barcodeValue: string) => {
     const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
 
     if (!itemData) {
-      return Swal.fire({ title: 'Not Found', text: 'The barcode scanned was not found in the system.', icon: 'warning' });
+      return Swal.fire({ title: t.not_found, text: t.barcode_error, icon: 'warning' });
     }
 
-    // PREVENT DUPLICATE (Logic based on Checkout Page)
     if (displayCheckins.some((i: any) => i.barcode === barcodeValue)) {
-      return Swal.fire({ title: 'Already Added', icon: 'info', timer: 1000, showConfirmButton: false });
+      return Swal.fire({ title: t.already_added, icon: 'info', timer: 1000, showConfirmButton: false });
     }
 
     const currentCheckout = checkouts.find((c: any) => c.item_id === itemData.item_id);
     if (!currentCheckout) {
-      return Swal.fire({ title: 'Action Denied', text: 'A book is not in your checkout list.', icon: 'error' });
+      return Swal.fire({ title: t.action_denied, text: t.not_in_list, icon: 'error' });
     }
 
     const isActuallyOverdue = new Date(currentCheckout.due_date) < new Date();
     const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
 
     const newReturn = {
-      biblioId:biblio.biblio_id,
-      title: biblio?.title || "Unknown Title",
+      biblioId: biblio.biblio_id,
+      title: biblio?.title || t.loading_title,
       barcode: barcodeValue,
       isOverdue: isActuallyOverdue,
       dueDate: currentCheckout.due_date
     };
 
     setDisplayCheckins((prev: any) => [newReturn, ...prev]);
-    Swal.fire({ title: 'Scanned', text:  `${newReturn.title} added to return list`, icon: 'success', timer: 1000, showConfirmButton: false });
+    Swal.fire({ title: t.scanned_swal, text: `${newReturn.title} ${t.added_to_return}`, icon: 'success', timer: 1000, showConfirmButton: false });
 
-    // CRITICAL: Added displayCheckins to dependencies so the scanner knows what's already in the list
-  }, [items, biblios, checkouts, displayCheckins]);
+  }, [items, biblios, checkouts, displayCheckins, t]);
+
   // --- Hardware Event Listener ---
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
-        e.preventDefault(); // Prevents scanner's "Enter" from closing active alerts
+        e.preventDefault();
         if (scanBuffer.current.trim().length > 0) {
           const code = scanBuffer.current.trim();
           if (currentLocation === '/') handleLogin(code);
@@ -173,8 +173,8 @@ const handleCheckoutLogic = useCallback(async (barcodeValue: string) => {
               <Lottie animationData={animationData} loop={true} />
             </div>
           </div>
-          <div className='font-bold text-[36px] text-white mt-4'>Scanning for Id</div>
-          <div className='text-[26px] text-white text-center mt-2'>Place your id flat on the reader pad below</div>
+          <div className='font-bold text-[36px] text-white mt-4'>{t.scanning_for_id}</div>
+          <div className='text-[26px] text-white text-center mt-2'>{t.place_id_flat}</div>
         </div>
       </div>
     );

@@ -82,6 +82,7 @@ const Header = () => {
         <div className="flex text-white justify-between items-center">
           <Logo title={t.login_required} />
           <div className="flex">
+            <LangBtn />
             <HelpBtn />
           </div>
         </div>

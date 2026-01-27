@@ -3,12 +3,16 @@ import Keyboard from "react-simple-keyboard";
 import "react-simple-keyboard/build/css/index.css";
 import "./KeyboardPad.css";
 import { useKiosk } from "../../context/KioskContext";
+import { translations } from "../../utils/translations"; // Import translations
 
 export default function KeyboardPad() {
-  const { isKeyboardOpen, closeKeyboard, keyboardCallback } = useKiosk();
+  const { isKeyboardOpen, closeKeyboard, keyboardCallback, language } = useKiosk(); // Get language
   const [input, setInput] = useState<string>("");
   const [layout, setLayout] = useState<string>("default");
   const keyboard = useRef<any>(null);
+
+  // Translation helper
+  const t:any = (translations as any)[language ] || translations.EN;
 
   if (!isKeyboardOpen) return null;
 
@@ -30,7 +34,7 @@ export default function KeyboardPad() {
     <div className="container">
       <div className="blur-overlay">
         <div className="modal-content">
-          <h3 className="modal-content-text">Enter details:</h3>
+          <h3 className="modal-content-text">{t.enter_details}</h3>
           <input
             autoFocus
             value={input}
@@ -41,7 +45,7 @@ export default function KeyboardPad() {
             className="popup-input"
             onKeyDown={(e) => e.key === "Enter" && handleDone()}
           />
-          <button onClick={handleDone} className="done-btn">Done</button>
+          <button onClick={handleDone} className="done-btn">{t.done_btn_keyboard}</button>
         </div>
         <div className="keyboard-wrapper">
           <Keyboard
