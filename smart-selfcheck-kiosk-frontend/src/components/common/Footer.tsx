@@ -120,7 +120,7 @@ const Footer = () => {
         const patron = patrons.find((p: any) => Number(p.patron_id) === Number(hold.patron_id));
         await sendHoldNotification(biblio?.title || "Book", patron ? `${patron.firstname} ${patron.surname}` : "Patron");
       }
-      navigate("/success", { state: { from: path } });
+      navigate("/success", { state: { from: '/checkin' } });
       Swal.close();
     } catch (error) { Swal.fire({ title: 'Error', icon: 'error' }); }
   };
