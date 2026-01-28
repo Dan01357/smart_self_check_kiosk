@@ -24,7 +24,7 @@ const HelpPage = lazy(() => import("./pages/HelpPage"));
 
 /**
  * PageLoader:
- * A fallback component that displays a "Loading..." message while the lazy-loaded 
+ * A fallback component that displays a loading animation while the lazy-loaded 
  * chunks for the pages are being fetched over the network.
  */
 const PageLoader = () => (
