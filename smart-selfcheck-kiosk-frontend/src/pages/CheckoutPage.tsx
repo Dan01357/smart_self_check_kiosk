@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 import { useKiosk } from '../context/KioskContext';
@@ -65,9 +65,9 @@ const CheckoutPage = () => {
         if (checkInCheckout.data.checkoutRes.length > 0) {
           const c = checkInCheckout.data.checkoutRes[0];
           if (String(c.patron_id) === String(patronId)) {
-            return Swal.fire({ title: "Error", text: "A book is already in your checkout list", icon: 'warning' });
+            return Swal.fire({ title: "Error", text: t.already_in_list, icon: 'warning' });
           } else {
-            return Swal.fire({ title: "Error", text: "A book is already checked out by someone else", icon: 'warning' });
+            return Swal.fire({ title: "Error", text: t.already_borrowed, icon: 'warning' });
           }
         }
 
@@ -75,7 +75,7 @@ const CheckoutPage = () => {
         if (checkInHolds.data.holdRes.length > 0) {
           const h = checkInHolds.data.holdRes.sort((a: any, b: any) => a.priority - b.priority)[0];
           if (String(h.patron_id) !== String(patronId)) {
-            return Swal.fire({ title: "Error", text: "A book is already reserved by someone else", icon: 'warning' });
+            return Swal.fire({ title: "Error", text: t.already_reserved, icon: 'warning' });
           }
         }
 
@@ -113,7 +113,7 @@ const CheckoutPage = () => {
       <Header />
       {/* Invisible component that listens for hardware scanner inputs */}
       <SimpleScanner />
-      
+
       <div className='pt-60 pb-30'>
         <div className="m-auto flex flex-col justify-center items-center overflow-auto">
           <div className="text-[42px] mb-[35px] font-[700]">

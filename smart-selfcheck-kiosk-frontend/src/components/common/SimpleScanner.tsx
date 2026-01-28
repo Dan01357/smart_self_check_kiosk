@@ -90,9 +90,9 @@ function SimpleScanner() {
       if (checkInCheckout.data.checkoutRes.length > 0) {
         const c = checkInCheckout.data.checkoutRes[0];
         if (String(c.patron_id) === String(patronId)) {
-          return Swal.fire({ title: "Error", text: "A book is already in your checkout list", icon: 'warning' });
+          return Swal.fire({ title: "Error", text: t.already_in_list, icon: 'warning' });
         } else {
-          return Swal.fire({ title: "Error", text: "A book is already checked out by someone else", icon: 'warning' });
+          return Swal.fire({ title: "Error", text: t.already_borrowed, icon: 'warning' });
         }
       }
 
@@ -102,7 +102,7 @@ function SimpleScanner() {
         const activeHolds = checkInHolds.data.holdRes.sort((a: any, b: any) => a.priority - b.priority);
         // If someone else is first in the queue, this patron cannot borrow it
         if (String(activeHolds[0].patron_id) !== String(patronId)) {
-          return Swal.fire({ title: "Error", text: "A book is already reserved by someone else", icon: 'warning' });
+          return Swal.fire({ title: "Error", text: t.already_reserved, icon: 'warning' });
         }
       }
 

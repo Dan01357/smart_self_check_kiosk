@@ -239,6 +239,10 @@ export const translations = {
     done_btn_keyboard: "Done",
     //--User Btn--
     logout_btn: "Logout",
+    //--Checkout Errors--
+    already_in_list: "A book is already in your checkout list",
+    already_borrowed: "A book is already checked out by someone else",
+    already_reserved: "A book is already reserved by someone else", 
   },
   JP: {
     // --- Header & Home ---
@@ -475,6 +479,10 @@ export const translations = {
     done_btn_keyboard: "完了",
     //--User Btn--
     logout_btn: "ログアウト",
+    //--Checkout Errors--
+    already_in_list: "この本はすでに貸出リストに入っています。",
+    already_borrowed: "この本はすでに他の利用者に貸し出されています。",
+    already_reserved: "この本はすでに他の利用者に予約されています。",
   },
   KO: {
     // --- Header & Home ---
@@ -711,5 +719,9 @@ export const translations = {
     done_btn_keyboard: "완료",
     //--User Btn
     logout_btn: "로그아웃",
+    //-Checkout Errors--
+    already_in_list: "이미 대출 목록에 추가된 도서입니다.",
+    already_borrowed: "이미 다른 이용자가 대출 중인 도서입니다.",
+    already_reserved: "이미 다른 이용자가 예약한 도서입니다.",
   }
 };
