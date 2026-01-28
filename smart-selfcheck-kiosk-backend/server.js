@@ -370,20 +370,28 @@ app.get("/api/v1/patrons", async (req, res) => {
     res.json(data);
 });
 
+// 2. Login Route (Fixed .find() safety)
 app.post("/api/v1/auth/login", async (req, res) => {
     try {
-        const { cardnumber } = req.params.body || req.body;
+        const { cardnumber } = req.body; // Standardize getting cardnumber
         
         if (!cardnumber) {
             return res.status(400).json({ success: "false", message: "Card number is required" });
         }
 
-        // LIVE FETCH: Query Koha for only this specific cardnumber
-        // Koha API returns an array for this endpoint
-        const patrons = await safeKohaGet(`/patrons?cardnumber=${cardnumber}`);
+        // 1. Try fetching with a query filter (Most compatible with Koha REST v1)
+        // We use the 'q' parameter which is more strict in Koha
+        const query = JSON.stringify({ cardnumber: cardnumber });
+        const patrons = await safeKohaGet(`/patrons?q=${query}`);
 
-        // Check if we found a match in the returned array
-        const authorized = Array.isArray(patrons) && patrons.length > 0 ? patrons[0] : null;
+        // 2. Safety Check: Ensure patrons is an array
+        const patronList = Array.isArray(patrons) ? patrons : [];
+
+        // 3. STRICT VALIDATION: Find the exact match in the returned list
+        // This prevents logging in as the first random person if Koha returns all patrons
+        const authorized = patronList.find(p => 
+            String(p.cardnumber).trim() === String(cardnumber).trim()
+        );
 
         if (authorized) {
             console.log(`Login Success: ${cardnumber}`);
@@ -394,7 +402,7 @@ app.post("/api/v1/auth/login", async (req, res) => {
                 patron_name: `${authorized.firstname} ${authorized.surname}`
             });
         } else {
-            console.log(`Login Failed: ${cardnumber}`);
+            console.log(`Login Failed: Invalid Card Number: ${cardnumber}`);
             res.json({ success: "false", message: "Card number does not exist" });
         }
     } catch (err) {
