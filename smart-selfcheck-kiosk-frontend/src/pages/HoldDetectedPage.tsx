@@ -1,39 +1,49 @@
+import { useEffect, useState } from 'react';
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 import { useKiosk } from '../context/KioskContext';
-import { translations } from '../utils/translations'; // Import
+import { translations } from '../utils/translations';
+import axios from 'axios';
 
 const HoldDetectedPage = () => {
-  const { patrons, items, biblios, displayHolds, language } = useKiosk();
+  const { displayHolds, language, API_BASE } = useKiosk();
+  const [hydratedHolds, setHydratedHolds] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Translation helper
-  const t:any = (translations as any)[language ] || translations.EN;
+  const t: any = (translations as any)[language] || translations.EN;
 
-  const rawHolds = displayHolds || [];
+  useEffect(() => {
+    const fetchHoldDetails = async () => {
+      if (!displayHolds || displayHolds.length === 0) {
+        setLoading(false);
+        return;
+      }
 
-  const displayHoldsDetect = rawHolds
-    .filter((hold: any) => Number(hold.priority) === 1)
-    .map((hold: any) => {
-      const biblioMatch = biblios.find(b => Number(b.biblio_id) === Number(hold.biblio_id));
-      const itemMatch = items.find(i => 
-        (hold.item_id && Number(i.item_id) === Number(hold.item_id)) || 
-        (Number(i.biblio_id) === Number(hold.biblio_id))
-      );
-      const patronMatch = patrons.find(p => Number(p.patron_id) === Number(hold.patron_id));
+      try {
+        setLoading(true);
+        // Using the same pattern as AccountPage
+        const response = await axios.post(`${API_BASE}/api/v1/hydrate-detected-holds`, {
+          holds: displayHolds
+        });
+        
+        // Filter for Priority 1 only as per your original logic
+        const priorityHolds = response.data.filter((h: any) => Number(h.priority) === 1);
+        setHydratedHolds(priorityHolds);
+      } catch (err) {
+        console.error("Failed to hydrate holds", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      return {
-        ...hold,
-        title: biblioMatch?.title || t.loading_title,
-        barcode: itemMatch?.external_id || itemMatch?.item_id || hold.item_id || "N/A",
-        patronName: patronMatch ? `${patronMatch.firstname} ${patronMatch.surname}` : `Patron #${hold.patron_id}`,
-        pickupBranch: hold.pickup_library_id || t.main_library
-      };
-    });
+    fetchHoldDetails();
+  }, [displayHolds, API_BASE]);
 
-  const uniquePatronNames: any[] = Array.from(new Set(displayHoldsDetect.map((h: any) => h.patronName)));
-  const uniqueBranches: any[] = Array.from(new Set(displayHoldsDetect.map((h: any) => h.pickupBranch)));
+  // Derived unique values for the Summary Card
+  const uniquePatronNames = Array.from(new Set(hydratedHolds.map((h: any) => h.patronName)));
+  const uniqueBranches = Array.from(new Set(hydratedHolds.map((h: any) => h.pickup_library_id || t.main_library)));
 
-  if (displayHoldsDetect.length === 0) {
+  if (!loading && hydratedHolds.length === 0) {
     return (
       <div className='max-w-[1080px] min-h-[1920px] m-auto bg-white'>
         <Header />
@@ -48,14 +58,13 @@ const HoldDetectedPage = () => {
       <Header />
 
       <div className='pt-60 flex p-[40px] flex-col overflow-auto pb-30'>
-
         {/* --- MAIN WARNING BANNER --- */}
         <div className='bg-[#fff3e0] border-l-[#f39c12] border-l-[5px] border-l-solid rounded-[10px] p-[40px] my-[30px] text-center'>
           <div className='text-[120px] mb-[20px] animate-bounce'>⚠️</div>
           <div className='text-[40px] text-[#e65100] font-bold mb-[15px] uppercase'>{t.hold_detected_banner}</div>
           <div className='text-[26px] text-[#e65100]'>
-            {displayHoldsDetect.length > 1
-              ? `${displayHoldsDetect.length} ${t.books_reserved_plural}`
+            {loading ? "..." : hydratedHolds.length > 1
+              ? `${hydratedHolds.length} ${t.books_reserved_plural}`
               : t.book_reserved_singular}
           </div>
         </div>
@@ -67,7 +76,7 @@ const HoldDetectedPage = () => {
           <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px] items-start'>
             <span>{t.hold_patrons_label}</span>
             <div className='text-right'>
-              {uniquePatronNames.map((name, i) => (
+              {loading ? "..." : uniquePatronNames.map((name: any, i) => (
                 <div key={i} className='font-medium'>{name}</div>
               ))}
             </div>
@@ -75,7 +84,7 @@ const HoldDetectedPage = () => {
 
           <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
             <span>{t.pickup_branch_label}</span>
-            <span>{uniqueBranches.join(', ') || t.main_library}</span>
+            <span>{loading ? "..." : uniqueBranches.join(', ') || t.main_library}</span>
           </div>
           <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
             <span>{t.status_label}</span>
@@ -93,7 +102,9 @@ const HoldDetectedPage = () => {
             <div className='text-[32px]'>{t.book_details_label}</div>
           </div>
           <div className='flex flex-col gap-5'>
-            {displayHoldsDetect.map((hold: any, index: number) => (
+            {loading ? (
+              <div className="text-center py-10 text-[22px] text-gray-500 italic">{t.scanning_items}...</div>
+            ) : hydratedHolds.map((hold: any, index: number) => (
               <div key={index} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[#f39c12] border-l-[5px] shadow-sm'>
                 <div className='text-[50px] min-w-[50px] mr-5'>📙</div>
                 <div>

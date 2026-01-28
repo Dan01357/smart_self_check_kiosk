@@ -230,6 +230,40 @@ app.post('/api/v1/my-holds', async (req, res) => {
     }
 });
 
+app.post('/api/v1/hydrate-detected-holds', async (req, res) => {
+  try {
+    const { holds } = req.body; // Array of hold objects from displayHolds
+    if (!holds || holds.length === 0) return res.json([]);
+
+    // 1. Get Unique IDs to minimize Koha calls
+    const biblioIds = [...new Set(holds.map(h => h.biblio_id))];
+    const patronIds = [...new Set(holds.map(h => h.patron_id))];
+
+    // 2. Batch fetch Biblios and Patrons
+    const [biblios, patrons] = await Promise.all([
+      safeKohaGet(`/biblios?q={"biblio_id":{"-in":[${biblioIds.join(',')}]}}`),
+      safeKohaGet(`/patrons?q={"patron_id":{"-in":[${patronIds.join(',')}]}}`)
+    ]);
+
+    // 3. Map the data back to the holds
+    const hydrated = holds.map(hold => {
+      const biblio = biblios.find(b => b.biblio_id === hold.biblio_id);
+      const patron = patrons.find(p => p.patron_id === hold.patron_id);
+      return {
+        ...hold,
+        title: biblio ? biblio.title : "Unknown Title",
+        patronName: patron ? `${patron.firstname} ${patron.surname}` : `Patron #${hold.patron_id}`,
+        // We use the item_id from the hold if specific, or the one scanned
+        barcode: hold.item_id || "N/A" 
+      };
+    });
+
+    res.json(hydrated);
+  } catch (error) {
+    console.error("Hydration Error:", error.message);
+    res.status(500).json({ error: "Failed to hydrate holds" });
+  }
+});
 
 function getSipTimestamp() {
     const now = new Date();
