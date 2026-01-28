@@ -155,8 +155,8 @@ const CheckinPage = () => {
               let statusColor = '#3498db';
               let statusEmoji = '📘';
 
-              if (isOverdue) { statusColor = '#e74c3c'; statusEmoji = '📕'; }
               if (isOnHold) { statusColor = '#f39c12'; statusEmoji = '📙'; }
+              if (isOverdue) { statusColor = '#e74c3c'; statusEmoji = '📕'; }
 
               return (
                 <div
@@ -168,13 +168,20 @@ const CheckinPage = () => {
                   <div>
                     <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{scannedItem.title}</div>
                     <div className='text-[20px] text-[rgb(127_140_141)]'>{t.barcode_label}: {scannedItem.barcode}</div>
-                    <div className='text-[20px] text-[rgb(127_140_141)]'>
-                      {/* Dynamic status text based on library rules */}
-                      {isOnHold
-                        ? t.on_hold
-                        : isOverdue
-                          ? `${daysLate} ${daysLate === 1 ? t.day_overdue : t.days_overdue}`
-                          : t.returned_on_time
+                    <div className='text-[20px] font-bold' style={{ color: statusColor }}>
+                      {/* logic update: stack on hold below overdue if both are true */}
+                      {isOnHold && isOverdue
+                        ? (
+                          <div className='flex flex-col'>
+                            <span>{daysLate} {daysLate === 1 ? t.day_overdue : t.days_overdue}</span>
+                            <span className='text-[18px] font-semibold opacity-90'>{t.on_hold}</span>
+                          </div>
+                        )
+                        : isOnHold
+                          ? t.on_hold
+                          : isOverdue
+                            ? `${daysLate} ${daysLate === 1 ? t.day_overdue : t.days_overdue}`
+                            : t.returned_on_time
                       }
                     </div>
                   </div>

@@ -32,7 +32,7 @@ const Footer = () => {
 
   // Load translations based on selected language
   const t: any = (translations as any)[language];
-  
+
   // Base styling for the footer container
   const wrapperClass = "fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[1080px] max-h-[1920px] bg-[#34495e] py-6 text-white flex justify-between px-8 text-[25px]";
 
@@ -52,11 +52,11 @@ const Footer = () => {
       // Map checkouts to renewal API promises
       const promises = checkouts.map(checkout => axios.post(`${API_BASE}/api/v1/renew`, { checkout_id: checkout.checkout_id }));
       await Promise.allSettled(promises);
-      
+
       // Refresh the local checkout list for the specific patron
       const response = await axios.post(`${API_BASE}/api/v1/my-books`, { patronId });
       setCheckouts(response.data);
-      
+
       Swal.fire({ title: 'Processed!', text: 'Renewal attempted.', icon: 'success', timer: 2000, showConfirmButton: false });
     } catch (error) {
       Swal.fire({ title: 'Error', text: 'Failed to process.', icon: 'error' });
@@ -80,8 +80,8 @@ const Footer = () => {
         await Promise.all(promises);
         navigate("/success", { state: { from: path } });
         Swal.close();
-      } catch (error) { 
-        Swal.fire({ title: 'Error', text: 'Failed to process returns.', icon: 'error' }); 
+      } catch (error) {
+        Swal.fire({ title: 'Error', text: 'Failed to process returns.', icon: 'error' });
       }
     } else {
       // Holds detected: show loading then navigate to the hold notification screen
@@ -146,9 +146,9 @@ const Footer = () => {
 
       navigate("/success", { state: { from: '/checkin' } });
       Swal.close();
-    } catch (error) { 
+    } catch (error) {
       console.error(error);
-      Swal.fire({ title: 'Error', text: 'Failed to process holds.', icon: 'error' }); 
+      Swal.fire({ title: 'Error', text: 'Failed to process holds.', icon: 'error' });
     }
   };
 
@@ -156,11 +156,11 @@ const Footer = () => {
    * handleCancel:
    * Resets all temporary transaction lists and returns the user to the home screen.
    */
-  const handleCancel = () => { 
-    setDisplayCheckouts([]); 
-    setDisplayCheckins([]); 
-    setDisplayHolds([]); 
-    navigate("/home"); 
+  const handleCancel = () => {
+    setDisplayCheckouts([]);
+    setDisplayCheckins([]);
+    setDisplayHolds([]);
+    navigate("/home");
   };
 
   // --- RENDER LOGIC ---
@@ -248,7 +248,11 @@ const Footer = () => {
   else if (path === '/success') {
     const handleMoreCheckout = () => { setDisplayCheckouts([]); navigate("/checkout"); };
     const handleMoreCheckin = () => { setDisplayCheckins([]); setDisplayHolds([]); navigate("/checkin"); };
-    const handleDone = () => { setDisplayCheckouts([]); setDisplayCheckins([]); setDisplayHolds([]); navigate("/home"); };
+    const handleDone = async () => {
+      setDisplayCheckouts([]); setDisplayCheckins([]); setDisplayHolds([]);
+      await Swal.fire({ title: 'Loading...', didOpen: () => Swal.showLoading(), timer:500,allowOutsideClick: false });
+      navigate("/home");
+    };
 
     return (
       <div className={wrapperClass}>

@@ -156,8 +156,8 @@ const AccountPage = () => {
               let statusColor = '#3498db';
               let statusEmoji = '📘';
 
-              if (isOverdue) { statusColor = '#e74c3c'; statusEmoji = '📕'; }
               if (isOnHold) { statusColor = '#f39c12'; statusEmoji = '📙'; }
+              if (isOverdue) { statusColor = '#e74c3c'; statusEmoji = '📕'; }
 
               return (
                 <div key={checkout.checkout_id} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[8px]' style={{ borderLeftColor: statusColor }}>
@@ -166,11 +166,19 @@ const AccountPage = () => {
                     <div className='text-[26px] font-bold text-[#2c3e50] leading-tight'>{title}</div>
                     <div className='text-[20px] text-[#7f8c8d]'>{t.due}: {formatDate(checkout.due_date)}</div>
                     <div className='text-[22px] font-bold' style={{ color: statusColor }}>
-                      {isOnHold
-                        ? t.on_hold
-                        : isOverdue
-                          ? `${daysLate} ${daysLate === 1 ? t.day_overdue : t.days_overdue}`
-                          : `${daysLeft} ${t.days_left}`
+                      {/* Logic update: Stack 'on hold' below 'overdue' if both are true */}
+                      {isOnHold && isOverdue 
+                        ? (
+                          <div className='flex flex-col'>
+                            <span>{daysLate} {daysLate === 1 ? t.day_overdue : t.days_overdue}</span>
+                            <span className='text-[18px] font-semibold opacity-90'>{t.on_hold}</span>
+                          </div>
+                        )
+                        : isOnHold
+                          ? t.on_hold
+                          : isOverdue
+                            ? `${daysLate} ${daysLate === 1 ? t.day_overdue : t.days_overdue}`
+                            : `${daysLeft} ${t.days_left}`
                       }
                     </div>
                   </div>

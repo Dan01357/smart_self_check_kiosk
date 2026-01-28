@@ -212,14 +212,14 @@ const SuccessPage = () => {
                 let statusColor = '#3498db'; // Default Blue
                 let statusEmoji = '📘';
 
-                if (item.isOverdue) {
-                    statusColor = '#e74c3c'; // Red
-                    statusEmoji = '📕';
-                }
-
                 if (item.isOnHold) {
                   statusColor = '#f39c12'; // Orange
                   statusEmoji = '📙';
+                }
+                
+                if (item.isOverdue) {
+                    statusColor = '#e74c3c'; // Red (Priority)
+                    statusEmoji = '📕';
                 }
 
                 return (
@@ -233,8 +233,17 @@ const SuccessPage = () => {
                       <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{item.title}</div>
                       <div className='text-[20px] text-[rgb(127_140_141)]'>{t.returned_on} {formatDate(now)} </div>
                       
-                      {/* Detailed status messaging */}
-                      {item.isOnHold ? (
+                      {/* Detailed status messaging stacked vertically if both true */}
+                      {item.isOnHold && item.isOverdue ? (
+                        <div className='flex flex-col'>
+                          <span className='text-[22px] font-bold' style={{ color: statusColor }}>
+                            {item.daysLate} {item.daysLate === 1 ? t.day_late_text : t.days_late_text}
+                          </span>
+                          <span className='text-[18px] font-semibold opacity-90' style={{ color: statusColor }}>
+                            {t.on_hold}
+                          </span>
+                        </div>
+                      ) : item.isOnHold ? (
                         <div className='text-[22px] font-bold' style={{ color: statusColor }}>
                           {t.on_hold}
                         </div>
