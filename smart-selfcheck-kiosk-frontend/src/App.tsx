@@ -17,7 +17,6 @@ const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
 const SuccessPage = lazy(() => import("./pages/SuccessPage"));
 const AccountPage = lazy(() => import("./pages/AccountPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const MyQRCode = lazy(() => import("./pages/Qr"));
 const RenewItemsPage = lazy(() => import("./pages/RenewItemsPage"));
 const HoldsPage = lazy(() => import("./pages/HoldsPage"));
 const HoldDetectedPage = lazy(() => import("./pages/HoldDetectedPage"));
@@ -50,23 +49,26 @@ function App() {
           */}
           <Route element={<PublicRoute />}>
             <Route path="/" element={<LoginPage />} />
-            <Route path="/qr" element={<MyQRCode />} />
           </Route>
+          {/* Moved /checkin /success and /onholddetected here so it is accessible without login */}
+          <Route path="/checkin" element={<CheckinPage />} />
+          <Route path="/success" element={<SuccessPage />} />
+          <Route path="/onholddetected" element={<HoldDetectedPage />} />
 
           {/* 
               Protected Routes:
               ProtectedRoute ensures only authenticated patrons can access 
               kiosk features like checkout, return, and account management.
           */}
+
           <Route element={<ProtectedRoute />}>
             <Route path="/home" element={<HomePage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/success" element={<SuccessPage />} />
-            <Route path="/checkin" element={<CheckinPage />} />
+            
             <Route path="/hold" element={<HoldsPage />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="/renew" element={<RenewItemsPage />} />
-            <Route path="/onholddetected" element={<HoldDetectedPage />} />
+            
             <Route path="/help" element={<HelpPage />} />
           </Route>
 
