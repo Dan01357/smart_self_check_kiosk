@@ -28,55 +28,38 @@ const LoginPage = () => {
   }
 
   const handleManualEntry = () => {
-  // Step 1: Ask for Card Number
+  // Only Step 1: Ask for Card Number
   openKeyboard(async (cardNumber) => {
     if (!cardNumber) return;
 
-    // Loading indicator for existence check
     Swal.fire({ title: t.scanning_items, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     try {
-      // Verification Step
-      const check = await axios.get(`${API_BASE}/api/v1/auth/check-patron/${cardNumber}`);
-      
-      if (!check.data.success) {
-        return Swal.fire({
-          title: t.login_invalid_title,
-          text: `${t.card_label || "Card"} ${cardNumber} ${t.not_found}`,
-          icon: 'error'
+      // Direct Login with only cardnumber
+      const response = await axios.post(`${API_BASE}/api/v1/auth/login`, {
+        cardnumber: String(cardNumber)
+      });
+
+      if (response.data.success === "true") {
+        setPatronId(response.data.patron_id);
+        setPatronName(response.data.patron_name);
+        handleLoginSuccess();
+        
+        Swal.fire({ 
+          title: t.login_success_title, 
+          icon: 'success', 
+          timer: 1500, 
+          showConfirmButton: false 
         });
+        
+        navigate("/checkout", { replace: true });
       }
-
-      // If exists, clear loading and move to Password
-      Swal.close();
-
-      setTimeout(() => {
-        openKeyboard(async (password) => {
-          if (!password) return;
-
-          Swal.fire({ title: t.scanning_items, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-          try {
-            const response = await axios.post(`${API_BASE}/api/v1/auth/login`, {
-              cardnumber: String(cardNumber),
-              password: String(password)
-            });
-
-            if (response.data.success === "true") {
-              setPatronId(response.data.patron_id);
-              setPatronName(response.data.patron_name);
-              handleLoginSuccess();
-              Swal.fire({ title: t.login_success_title, icon: 'success', timer: 1500, showConfirmButton: false });
-              navigate("/checkout", { replace: true });
-            }
-          } catch (error: any) {
-            Swal.fire({ title: t.login_invalid_title, text: t.login_error_text, icon: 'error' });
-          }
-        }, t.enter_password_prompt || "Enter Password");
-      }, 400);
-
-    } catch (err) {
-      Swal.fire({ title: "Error", text: "Connection failed", icon: 'error' });
+    } catch (error: any) {
+      Swal.fire({ 
+        title: t.login_invalid_title, 
+        text: `${t.card_label || "Card"} ${cardNumber} ${t.not_found}`, 
+        icon: 'error' 
+      });
     }
   }, t.enter_card_prompt || "Enter Card Number");
 };

@@ -72,27 +72,37 @@ app.get("/api/v1/auth/check-patron/:cardnumber", async (req, res) => {
 });
 
 // 2. Secure PIN Login
+// 2. Simplified Login (No Password Required)
 app.post("/api/v1/auth/login", async (req, res) => {
     try {
-        const { cardnumber, password } = req.body;
+        const { cardnumber } = req.body;
+        
+        if (!cardnumber) {
+            return res.status(400).json({ success: "false", message: "Card number required" });
+        }
+
         const query = JSON.stringify({ cardnumber });
         const patrons = await safeKohaGet(`/patrons?q=${query}`);
-        const patron = patrons.find(p => String(p.cardnumber).trim() === String(cardnumber).trim());
+        
+        // Find exact match
+        const patron = Array.isArray(patrons) ? patrons.find(p => 
+            String(p.cardnumber).trim() === String(cardnumber).trim()
+        ) : null;
 
-        if (!patron) return res.status(401).json({ success: "false", message: "User not found" });
-
-        await axios.post(`${KOHA_URL}/auth/password/validation`, {
-            userid: patron.userid,
-            password: password
-        }, { headers: authHeader });
-
-        res.json({
-            success: "true",
-            patron_id: patron.patron_id,
-            patron_name: `${patron.firstname} ${patron.surname}`
-        });
+        if (patron) {
+            console.log(`Login Success (Card Only): ${cardnumber}`);
+            res.json({
+                success: "true",
+                patron_id: patron.patron_id,
+                patron_name: `${patron.firstname} ${patron.surname}`
+            });
+        } else {
+            console.log(`Login Failed: User not found: ${cardnumber}`);
+            res.status(401).json({ success: "false", message: "User not found" });
+        }
     } catch (err) {
-        res.status(401).json({ success: "false", message: "Invalid password" });
+        console.error("Login Route Error:", err.message);
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 

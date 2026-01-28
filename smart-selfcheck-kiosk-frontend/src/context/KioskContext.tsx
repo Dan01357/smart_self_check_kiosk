@@ -14,13 +14,13 @@ interface KioskContextType {
   // UI States
   isKeyboardOpen: boolean;
   keyboardCallback: (val: string) => void;
-  keyboardPrompt: string; // NEW
-  openKeyboard: (onDone: (val: any) => void, prompt?: string) => void; // UPDATED
+  keyboardPrompt: string;
+  openKeyboard: (onDone: (val: any) => void, prompt?: string) => void;
   closeKeyboard: () => void;
   showScanner: boolean;
   setShowScanner: React.Dispatch<React.SetStateAction<boolean>>;
 
-  // Scanned Session Data
+  // Active Session Data (Scanned during the current visit)
   displayCheckouts: any[];
   setDisplayCheckouts: React.Dispatch<React.SetStateAction<any[]>>;
   displayCheckins: any[];
@@ -28,19 +28,11 @@ interface KioskContextType {
   displayHolds: any[];
   setDisplayHolds: React.Dispatch<React.SetStateAction<any[]>>;
 
-  // Account Page Cache
+  // Account Page Cache (Current User's history)
   checkouts: any[];
   setCheckouts: React.Dispatch<React.SetStateAction<any[]>>;
   holds: any[];
   setHolds: React.Dispatch<React.SetStateAction<any[]>>;
-
-  // Legacy / Compatibility
-  biblios: any[];
-  setBiblios: (v: any[]) => void;
-  items: any[];
-  setItems: (v: any[]) => void;
-  patrons: any[];
-  setPatrons: (v: any[]) => void;
 
   API_BASE: string;
   language: 'EN' | 'JP' | 'KO';
@@ -52,31 +44,27 @@ const KioskContext = createContext<KioskContextType | undefined>(undefined);
 export const KioskProvider = ({ children }: { children: ReactNode }) => {
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://192.168.0.149:4040";
 
-  // Auth States
+  // --- Auth States ---
   const [authorized, setAuthorized] = useState<boolean>(() => localStorage.getItem("kiosk_auth") === "true");
   const [patronId, setPatronId] = useState<number>(() => Number(localStorage.getItem("kiosk_patron_id")) || 0);
   const [patronName, setPatronName] = useState<string>(() => localStorage.getItem("kiosk_patron_name") || '');
 
-  // Session Data
+  // --- Session Lists ---
   const [displayCheckouts, setDisplayCheckouts] = useState<any[]>([]);
   const [displayCheckins, setDisplayCheckins] = useState<any[]>([]);
   const [displayHolds, setDisplayHolds] = useState<any[]>([]);
 
-  // Account Data
+  // --- Account Data ---
   const [checkouts, setCheckouts] = useState<any[]>([]);
   const [holds, setHolds] = useState<any[]>([]);
   
-  // Keyboard Logic States
-  const [keyboardPrompt, setKeyboardPrompt] = useState<string>(""); // NEW
+  // --- UI Logic States ---
+  const [keyboardPrompt, setKeyboardPrompt] = useState<string>("");
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [keyboardCallback, setKeyboardCallback] = useState<(val: string) => void>(() => () => { });
+  const [showScanner, setShowScanner] = useState(false);
 
-  // Compatibility
-  const [biblios, setBiblios] = useState<any[]>([]);
-  const [items, setItems] = useState<any[]>([]);
-  const [patrons, setPatrons] = useState<any[]>([]);
-
-  // Language
+  // --- Language ---
   const [language, setLanguage] = useState<'EN' | 'JP' | 'KO'>(() => {
     const stored = localStorage.getItem("kiosk_lang");
     if (stored) {
@@ -90,8 +78,7 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
     return "EN";
   });
 
-  const [showScanner, setShowScanner] = useState(false);
-
+  // Persist Identity only
   useEffect(() => {
     localStorage.setItem("kiosk_auth", authorized.toString());
     localStorage.setItem("kiosk_patron_id", patronId.toString());
@@ -114,10 +101,9 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
 
   const handleLoginSuccess = () => setAuthorized(true);
 
-  // UPDATED: Now accepts a second "prompt" argument
   const openKeyboard = (onDone: (val: any) => void, prompt?: string) => { 
     setKeyboardCallback(() => onDone); 
-    setKeyboardPrompt(prompt || ""); // Set the prompt text
+    setKeyboardPrompt(prompt || "");
     setIsKeyboardOpen(true); 
   };
 
@@ -127,11 +113,10 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
     <KioskContext.Provider value={{
       authorized, setAuthorized, patronId, setPatronId, logout,
       isKeyboardOpen, openKeyboard, closeKeyboard, keyboardCallback,
-      keyboardPrompt, // NEW
+      keyboardPrompt,
       displayCheckouts, setDisplayCheckouts, showScanner, setShowScanner,
       displayCheckins, setDisplayCheckins, patronName, setPatronName,
       handleLoginSuccess, holds, setHolds, checkouts, setCheckouts,
-      biblios, setBiblios, items, setItems, patrons, setPatrons,
       API_BASE, displayHolds, setDisplayHolds, language, setLanguage
     }}>
       {children}
