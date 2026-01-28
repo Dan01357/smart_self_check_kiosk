@@ -370,20 +370,27 @@ app.get("/api/v1/patrons", async (req, res) => {
     res.json(data);
 });
 
-// 2. Login Route (Fixed .find() safety)
 app.post("/api/v1/auth/login", async (req, res) => {
     try {
-        const { cardnumber } = req.body;
-        const patrons = await safeKohaGet('/patrons');
+        const { cardnumber } = req.params.body || req.body;
+        
+        if (!cardnumber) {
+            return res.status(400).json({ success: "false", message: "Card number is required" });
+        }
 
-        // Safety check: ensure patrons is an array
-        const patronList = Array.isArray(patrons) ? patrons : [];
-        const authorized = patronList.find(p => p.cardnumber === cardnumber);
+        // LIVE FETCH: Query Koha for only this specific cardnumber
+        // Koha API returns an array for this endpoint
+        const patrons = await safeKohaGet(`/patrons?cardnumber=${cardnumber}`);
+
+        // Check if we found a match in the returned array
+        const authorized = Array.isArray(patrons) && patrons.length > 0 ? patrons[0] : null;
 
         if (authorized) {
             console.log(`Login Success: ${cardnumber}`);
             res.json({
-                success: "true", message: "Login Successful", patron_id: authorized.patron_id,
+                success: "true", 
+                message: "Login Successful", 
+                patron_id: authorized.patron_id,
                 patron_name: `${authorized.firstname} ${authorized.surname}`
             });
         } else {
@@ -392,7 +399,7 @@ app.post("/api/v1/auth/login", async (req, res) => {
         }
     } catch (err) {
         console.error("Login Route Error:", err.message);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 

@@ -5,7 +5,7 @@ import { useKiosk } from '../context/KioskContext';
 import { postDataLogin } from "../../app";
 import Swal from 'sweetalert2';
 import SimpleScanner from "../components/common/TestQrResult";
-import { translations } from '../utils/translations'; // Import
+import { translations } from '../utils/translations';
 
 const LoginPage = () => {
   const { 
@@ -15,13 +15,12 @@ const LoginPage = () => {
     openKeyboard, 
     showScanner, 
     setShowScanner,
-    language // Get language from context
+    language 
   } = useKiosk();
 
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Translation helper
   const t:any = (translations as any)[language ] || translations.EN;
 
   const handleShowScanner = () => {
@@ -30,6 +29,13 @@ const LoginPage = () => {
 
   const handleManualEntry = () => {
     openKeyboard(async (cardNumber) => {
+      // Show loading while live-fetching from Koha
+      Swal.fire({
+        title: t.scanning_items || "Authenticating...",
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
       try {
         const response = await postDataLogin(String(cardNumber));
 
