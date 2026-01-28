@@ -3,16 +3,15 @@ import Keyboard from "react-simple-keyboard";
 import "react-simple-keyboard/build/css/index.css";
 import "./KeyboardPad.css";
 import { useKiosk } from "../../context/KioskContext";
-import { translations } from "../../utils/translations"; // Import translations
+import { translations } from "../../utils/translations";
 
 export default function KeyboardPad() {
-  const { isKeyboardOpen, closeKeyboard, keyboardCallback, language } = useKiosk(); // Get language
+  const { isKeyboardOpen, closeKeyboard, keyboardCallback, language, keyboardPrompt } = useKiosk();
   const [input, setInput] = useState<string>("");
   const [layout, setLayout] = useState<string>("default");
   const keyboard = useRef<any>(null);
 
-  // Translation helper
-  const t:any = (translations as any)[language ] || translations.EN;
+  const t: any = (translations as any)[language] || translations.EN;
 
   if (!isKeyboardOpen) return null;
 
@@ -24,19 +23,26 @@ export default function KeyboardPad() {
   };
 
   const handleDone = () => {
-    keyboardCallback(input); // Send data to the component that opened the keyboard
-    setInput(""); // Reset for next use
+    keyboardCallback(input);
+    setInput("");
     keyboard.current?.setInput("");
     closeKeyboard();
   };
+
+  // Logic to check if the prompt requires a hidden input
+  const isPassword = keyboardPrompt?.toLowerCase().includes("password") || 
+                     keyboardPrompt?.toLowerCase().includes("pin");
 
   return (
     <div className="container">
       <div className="blur-overlay">
         <div className="modal-content">
-          <h3 className="modal-content-text">{t.enter_details}</h3>
+          {/* Display the prompt provided by the caller, fallback to translation */}
+          <h3 className="modal-content-text">{keyboardPrompt || t.enter_details}</h3>
+          
           <input
             autoFocus
+            type={isPassword ? "password" : "text"}
             value={input}
             onChange={(e) => {
                 setInput(e.target.value);

@@ -10,15 +10,16 @@ interface KioskContextType {
   setPatronName: React.Dispatch<React.SetStateAction<string>>;
   handleLoginSuccess: () => void;
   logout: () => void;
-  
+
   // UI States
   isKeyboardOpen: boolean;
   keyboardCallback: (val: string) => void;
-  openKeyboard: (onDone: (val: any) => void) => void;
+  keyboardPrompt: string; // NEW
+  openKeyboard: (onDone: (val: any) => void, prompt?: string) => void; // UPDATED
   closeKeyboard: () => void;
   showScanner: boolean;
   setShowScanner: React.Dispatch<React.SetStateAction<boolean>>;
-  
+
   // Scanned Session Data
   displayCheckouts: any[];
   setDisplayCheckouts: React.Dispatch<React.SetStateAction<any[]>>;
@@ -26,14 +27,14 @@ interface KioskContextType {
   setDisplayCheckins: React.Dispatch<React.SetStateAction<any[]>>;
   displayHolds: any[];
   setDisplayHolds: React.Dispatch<React.SetStateAction<any[]>>;
-  
+
   // Account Page Cache
   checkouts: any[];
   setCheckouts: React.Dispatch<React.SetStateAction<any[]>>;
   holds: any[];
   setHolds: React.Dispatch<React.SetStateAction<any[]>>;
 
-  // Legacy / Compatibility (Keeping these to prevent crashes in other components)
+  // Legacy / Compatibility
   biblios: any[];
   setBiblios: (v: any[]) => void;
   items: any[];
@@ -60,17 +61,22 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
   const [displayCheckouts, setDisplayCheckouts] = useState<any[]>([]);
   const [displayCheckins, setDisplayCheckins] = useState<any[]>([]);
   const [displayHolds, setDisplayHolds] = useState<any[]>([]);
-  
+
   // Account Data
   const [checkouts, setCheckouts] = useState<any[]>([]);
   const [holds, setHolds] = useState<any[]>([]);
+  
+  // Keyboard Logic States
+  const [keyboardPrompt, setKeyboardPrompt] = useState<string>(""); // NEW
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [keyboardCallback, setKeyboardCallback] = useState<(val: string) => void>(() => () => { });
 
-  // Compatibility (Empty arrays to satisfy older components)
+  // Compatibility
   const [biblios, setBiblios] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [patrons, setPatrons] = useState<any[]>([]);
 
-  // Language - CRITICAL FIX: Properly parse JSON to avoid double quotes
+  // Language
   const [language, setLanguage] = useState<'EN' | 'JP' | 'KO'>(() => {
     const stored = localStorage.getItem("kiosk_lang");
     if (stored) {
@@ -85,10 +91,7 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const [showScanner, setShowScanner] = useState(false);
-  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
-  const [keyboardCallback, setKeyboardCallback] = useState<(val: string) => void>(() => () => { });
 
-  // Sync Auth to LocalStorage
   useEffect(() => {
     localStorage.setItem("kiosk_auth", authorized.toString());
     localStorage.setItem("kiosk_patron_id", patronId.toString());
@@ -106,21 +109,29 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
     setCheckouts([]);
     setHolds([]);
     localStorage.clear();
-    window.location.href = "/"; // Force reset to login
+    window.location.href = "/";
   }, []);
 
   const handleLoginSuccess = () => setAuthorized(true);
-  const openKeyboard = (onDone: (val: any) => void) => { setKeyboardCallback(() => onDone); setIsKeyboardOpen(true); };
+
+  // UPDATED: Now accepts a second "prompt" argument
+  const openKeyboard = (onDone: (val: any) => void, prompt?: string) => { 
+    setKeyboardCallback(() => onDone); 
+    setKeyboardPrompt(prompt || ""); // Set the prompt text
+    setIsKeyboardOpen(true); 
+  };
+
   const closeKeyboard = () => setIsKeyboardOpen(false);
 
   return (
     <KioskContext.Provider value={{
       authorized, setAuthorized, patronId, setPatronId, logout,
       isKeyboardOpen, openKeyboard, closeKeyboard, keyboardCallback,
+      keyboardPrompt, // NEW
       displayCheckouts, setDisplayCheckouts, showScanner, setShowScanner,
       displayCheckins, setDisplayCheckins, patronName, setPatronName,
       handleLoginSuccess, holds, setHolds, checkouts, setCheckouts,
-      biblios, setBiblios, items, setItems, patrons, setPatrons, // restored
+      biblios, setBiblios, items, setItems, patrons, setPatrons,
       API_BASE, displayHolds, setDisplayHolds, language, setLanguage
     }}>
       {children}

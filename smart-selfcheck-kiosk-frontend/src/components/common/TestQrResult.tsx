@@ -3,7 +3,6 @@ import Lottie from 'lottie-react';
 import animationData from "../../assets/QR Code Scanner.json";
 import Swal from 'sweetalert2';
 import { useKiosk } from '../../context/KioskContext';
-import { postDataLogin } from '../../../app';
 import { useLocation, useNavigate } from 'react-router';
 import { translations } from '../../utils/translations';
 import axios from 'axios';
@@ -12,8 +11,8 @@ function SimpleScanner() {
   const scanBuffer = useRef("");
   const {
     setPatronId, setShowScanner, patronId,
-    setDisplayCheckouts, setDisplayCheckins, displayCheckouts, setPatronName, 
-    displayCheckins, handleLoginSuccess, API_BASE, language 
+    setDisplayCheckouts, setDisplayCheckins, displayCheckouts, setPatronName,
+    displayCheckins, handleLoginSuccess, API_BASE, language, openKeyboard // Added openKeyboard
   } = useKiosk();
 
   const navigate = useNavigate();
@@ -23,23 +22,55 @@ function SimpleScanner() {
   const t: any = (translations as any)[language] || translations.EN;
 
   // --- Logic Handlers ---
-  const handleLogin = async (cardNumber: string) => {
-    try {
-      const response = await postDataLogin(String(cardNumber));
-      if (response.success === "true") {
-        setPatronId(response.patron_id);
-        setPatronName(response.patron_name)
-        handleLoginSuccess()
-        Swal.fire({ title: t.login_success_title, text: t.login_success_text, icon: 'success', timer: 1500, showConfirmButton: false });
-        navigate("/checkout", { replace: true, state: location.state });
-      } else {
-        Swal.fire({ title: t.login_invalid_title, text: `${t.card_label} ${cardNumber} ${t.not_found}`, icon: 'error', timer: 1500, showConfirmButton: false });
-      }
-    } catch (error) {
-      Swal.fire({ title: t.login_error_title, text: t.login_failed_err, icon: 'error' });
-    }
-  };
+ const handleLogin = async (cardNumber: string) => {
+  // Loading indicator immediately after scan
+  Swal.fire({ title: t.scanning_items, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
+  try {
+    // Verification Step
+    const check = await axios.get(`${API_BASE}/api/v1/auth/check-patron/${cardNumber}`);
+
+    if (!check.data.success) {
+      return Swal.fire({
+        title: t.login_invalid_title,
+        text: `${t.card_label || "Card"} ${cardNumber} ${t.not_found}`,
+        icon: 'error'
+      });
+    }
+
+    // If exists, close loading and open keyboard for PIN
+    Swal.close();
+
+    setTimeout(() => {
+      openKeyboard(async (pin) => {
+        if (!pin) return;
+
+        Swal.fire({ title: t.scanning_items, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+          const response = await axios.post(`${API_BASE}/api/v1/auth/login`, {
+            cardnumber: String(cardNumber),
+            password: String(pin)
+          });
+
+          if (response.data.success === "true") {
+            setPatronId(response.data.patron_id);
+            setPatronName(response.data.patron_name);
+            handleLoginSuccess();
+            setShowScanner(false);
+            Swal.fire({ title: t.login_success_title, icon: 'success', timer: 1500, showConfirmButton: false });
+            navigate("/checkout", { replace: true, state: location.state });
+          }
+        } catch (error: any) {
+          Swal.fire({ title: t.login_invalid_title, text: t.login_error_text, icon: 'error' });
+        }
+      }, t.enter_password_prompt || "Enter Password");
+    }, 400);
+
+  } catch (err) {
+    Swal.fire({ title: "Error", text: "Connection failed", icon: 'error' });
+  }
+};
   const handleCheckoutLogic = useCallback(async (barcodeValue: string) => {
     // 1. Local Duplicate Check
     if (displayCheckouts.some((i: any) => i.externalId === barcodeValue)) {
@@ -53,7 +84,6 @@ function SimpleScanner() {
       const checkInCheckout = await axios.get(`${API_BASE}/api/check-book-incheckouts/${barcodeValue}`);
       if (checkInCheckout.data.checkoutRes.length > 0) {
         const c = checkInCheckout.data.checkoutRes[0];
-        // Compare current patron with checkout patron (handling number vs string)
         if (String(c.patron_id) === String(patronId)) {
           return Swal.fire({ title: "Error", text: "A book is already in your checkout list", icon: 'warning' });
         } else {
@@ -113,7 +143,6 @@ function SimpleScanner() {
     Swal.fire({ title: t.scanning_items, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     try {
-      // 1. Fetch live checkout info for this barcode
       const checkRes = await axios.get(`${API_BASE}/api/check-book-incheckouts/${barcodeValue}`);
       const checkoutData = checkRes.data.checkoutRes[0];
 
@@ -121,9 +150,7 @@ function SimpleScanner() {
         return Swal.fire({ title: t.not_found, text: t.not_in_list, icon: 'error' });
       }
 
-      // 2. Fetch Biblio info for title
       const bookDetails = await axios.get(`${API_BASE}/api/book-details/${barcodeValue}`);
-      
       const isActuallyOverdue = new Date(checkoutData.due_date) < new Date();
 
       const newReturn = {

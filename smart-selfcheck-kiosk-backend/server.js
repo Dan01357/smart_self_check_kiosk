@@ -265,6 +265,28 @@ app.post('/api/v1/hydrate-detected-holds', async (req, res) => {
   }
 });
 
+// New endpoint to check if card number exists before asking for PIN
+app.get("/api/v1/auth/check-patron/:cardnumber", async (req, res) => {
+    try {
+        const { cardnumber } = req.params;
+        const query = JSON.stringify({ cardnumber: cardnumber });
+        const patrons = await safeKohaGet(`/patrons?q=${query}`);
+
+        const patron = Array.isArray(patrons) ? patrons.find(p => 
+            String(p.cardnumber).trim() === String(cardnumber).trim()
+        ) : null;
+
+        if (patron) {
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, message: "Card number not found" });
+        }
+    } catch (err) {
+        res.status(500).json({ error: "Server Error" });
+    }
+});
+
+
 function getSipTimestamp() {
     const now = new Date();
     const Y = now.getFullYear();
@@ -373,44 +395,51 @@ app.get("/api/v1/patrons", async (req, res) => {
 // 2. Login Route (Fixed .find() safety)
 app.post("/api/v1/auth/login", async (req, res) => {
     try {
-        const { cardnumber } = req.body; // Standardize getting cardnumber
-        
-        if (!cardnumber) {
-            return res.status(400).json({ success: "false", message: "Card number is required" });
+        const { cardnumber, password } = req.body;
+
+        if (!cardnumber || !password) {
+            return res.status(400).json({ success: "false", message: "Missing credentials" });
         }
 
-        // 1. Try fetching with a query filter (Most compatible with Koha REST v1)
-        // We use the 'q' parameter which is more strict in Koha
+        // 1. Get the patron details first using the cardnumber/barcode
+        // This is a targeted search, NOT a fetch-all.
         const query = JSON.stringify({ cardnumber: cardnumber });
         const patrons = await safeKohaGet(`/patrons?q=${query}`);
 
-        // 2. Safety Check: Ensure patrons is an array
-        const patronList = Array.isArray(patrons) ? patrons : [];
-
-        // 3. STRICT VALIDATION: Find the exact match in the returned list
-        // This prevents logging in as the first random person if Koha returns all patrons
-        const authorized = patronList.find(p => 
+        const patron = Array.isArray(patrons) ? patrons.find(p => 
             String(p.cardnumber).trim() === String(cardnumber).trim()
-        );
+        ) : null;
 
-        if (authorized) {
+        if (!patron) {
+            return res.status(401).json({ success: "false", message: "Card number not found" });
+        }
+
+        // 2. Validate the password using the endpoint you tested in Postman
+        // We use the 'userid' obtained from the patron search
+        try {
+            await axios.post(`http://192.168.0.149/api/v1/auth/password/validation`, {
+                userid: patron.userid, // Using the userid from the database search
+                password: password
+            }, { headers: authHeader });
+
+            // If we reach here, validation was successful
             console.log(`Login Success: ${cardnumber}`);
             res.json({
-                success: "true", 
-                message: "Login Successful", 
-                patron_id: authorized.patron_id,
-                patron_name: `${authorized.firstname} ${authorized.surname}`
+                success: "true",
+                patron_id: patron.patron_id,
+                patron_name: `${patron.firstname} ${patron.surname}`
             });
-        } else {
-            console.log(`Login Failed: Invalid Card Number: ${cardnumber}`);
-            res.json({ success: "false", message: "Card number does not exist" });
+
+        } catch (valError) {
+            console.log(`Password validation failed for ${cardnumber}`);
+            return res.status(401).json({ success: "false", message: "Invalid password" });
         }
+
     } catch (err) {
         console.error("Login Route Error:", err.message);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
-
 // 3. Checkout POST Route (The logic that handles scanning books)
 app.post("/api/v1/checkouts", async (req, res) => {
     try {

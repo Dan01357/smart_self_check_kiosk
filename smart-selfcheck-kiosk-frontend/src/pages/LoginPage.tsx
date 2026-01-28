@@ -1,78 +1,85 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 import { useKiosk } from '../context/KioskContext';
-import { postDataLogin } from "../../app";
 import Swal from 'sweetalert2';
 import SimpleScanner from "../components/common/TestQrResult";
 import { translations } from '../utils/translations';
+import axios from "axios";
 
 const LoginPage = () => {
-  const { 
-    handleLoginSuccess, 
-    setPatronId, 
-    setPatronName, 
-    openKeyboard, 
-    showScanner, 
+  const {
+    handleLoginSuccess,
+    setPatronId,
+    setPatronName,
+    openKeyboard,
+    showScanner,
     setShowScanner,
-    language 
+    language,
+    API_BASE
   } = useKiosk();
 
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const t:any = (translations as any)[language ] || translations.EN;
+  const t: any = (translations as any)[language] || translations.EN;
 
   const handleShowScanner = () => {
     setShowScanner(true)
   }
 
   const handleManualEntry = () => {
-    openKeyboard(async (cardNumber) => {
-      // Show loading while live-fetching from Koha
-      Swal.fire({
-        title: t.scanning_items || "Authenticating...",
-        allowOutsideClick: false,
-        didOpen: () => Swal.showLoading()
-      });
+  // Step 1: Ask for Card Number
+  openKeyboard(async (cardNumber) => {
+    if (!cardNumber) return;
 
-      try {
-        const response = await postDataLogin(String(cardNumber));
+    // Loading indicator for existence check
+    Swal.fire({ title: t.scanning_items, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-        if (response.success === "true") {
-          setPatronId(response.patron_id);
-          setPatronName(response.patron_name)
-          handleLoginSuccess()
-
-          Swal.fire({
-            title: t.login_success_title,
-            text: t.login_success_text,
-            icon: 'success',
-            timer: 1500,
-            showConfirmButton: false
-          });
-
-          navigate("/checkout", {
-            replace: true,
-            state: location.state 
-          });
-        } else {
-          Swal.fire({
-            title: t.login_invalid_title,
-            text: `${t.login_invalid_text_prefix} ${cardNumber} ${t.login_invalid_text_suffix}`,
-            icon: 'error'
-          });
-        }
-      } catch (error) {
-        Swal.fire({
-          title: t.login_error_title,
-          text: t.login_error_text,
+    try {
+      // Verification Step
+      const check = await axios.get(`${API_BASE}/api/v1/auth/check-patron/${cardNumber}`);
+      
+      if (!check.data.success) {
+        return Swal.fire({
+          title: t.login_invalid_title,
+          text: `${t.card_label || "Card"} ${cardNumber} ${t.not_found}`,
           icon: 'error'
         });
-        console.error("Login error:", error);
       }
-    });
-  };
+
+      // If exists, clear loading and move to Password
+      Swal.close();
+
+      setTimeout(() => {
+        openKeyboard(async (password) => {
+          if (!password) return;
+
+          Swal.fire({ title: t.scanning_items, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+          try {
+            const response = await axios.post(`${API_BASE}/api/v1/auth/login`, {
+              cardnumber: String(cardNumber),
+              password: String(password)
+            });
+
+            if (response.data.success === "true") {
+              setPatronId(response.data.patron_id);
+              setPatronName(response.data.patron_name);
+              handleLoginSuccess();
+              Swal.fire({ title: t.login_success_title, icon: 'success', timer: 1500, showConfirmButton: false });
+              navigate("/checkout", { replace: true });
+            }
+          } catch (error: any) {
+            Swal.fire({ title: t.login_invalid_title, text: t.login_error_text, icon: 'error' });
+          }
+        }, t.enter_password_prompt || "Enter Password");
+      }, 400);
+
+    } catch (err) {
+      Swal.fire({ title: "Error", text: "Connection failed", icon: 'error' });
+    }
+  }, t.enter_card_prompt || "Enter Card Number");
+};
 
   return (
     <div className='max-w-[1080px] min-h-[1920px] m-auto border-x border-x-solid border-x-gray-700'>
@@ -88,7 +95,7 @@ const LoginPage = () => {
               <div className='font-bold text-[32px]'>{t.scan_qr_title}</div>
               <div className='text-[24px] text-[#7f8c8d]'>{t.scan_qr_sub}</div>
             </button>
-            
+
             {/* Manual Entry Button */}
             <button
               className="flex flex-col items-center rounded-[20px] border border-[#ecf0f1] border-[3px] hover:border-[#3498db] hover:shadow-[0_10px_30px_rgba(0,0,0,0.1)] hover:-translate-y-0.5 transition-all duration-300 w-150 p-[50px]"
@@ -102,7 +109,7 @@ const LoginPage = () => {
         </div>
 
         {showScanner && <SimpleScanner />}
-        
+
         <div className='bg-[#e3f2fd] p-[30px] rounded-[15px] m-[25px]'>
           <div className='text-[30px] font-bold text-[#1565c0] mb-[20px]'>
             💡 {t.first_time_title}

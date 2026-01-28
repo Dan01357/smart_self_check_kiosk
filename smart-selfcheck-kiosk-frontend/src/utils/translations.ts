@@ -195,7 +195,7 @@ export const translations = {
     login_invalid_text_prefix: "Card number",
     login_invalid_text_suffix: "does not exist",
     login_error_title: "Error!",
-    login_error_text: "Something went wrong with the login process.",
+    login_error_text: "Wrong password input",
     //--Success Page--
     checkout_success_title: "Checkout Successful!",
     return_success_title: "Return Successful!",

@@ -7,13 +7,13 @@ export const api = axios.create({
   baseURL: API_BASE
 })
 
-export async function postDataLogin(cardnumber: string | undefined) {
-  if (cardnumber) {
-    const res = await api.post('/api/v1/auth/login', { cardnumber: cardnumber })
-    return res.data
-  }
+export async function postDataLogin(cardnumber: string, password: string) {
+  const res = await api.post('/api/v1/auth/login', { 
+    cardnumber: cardnumber,
+    password: password 
+  });
+  return res.data;
 }
-
 
 
 
