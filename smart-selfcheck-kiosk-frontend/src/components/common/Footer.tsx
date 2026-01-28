@@ -2,16 +2,14 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useKiosk } from "../../context/KioskContext";
 import Swal from "sweetalert2";
 import axios from "axios";
-import { useEffect } from "react";
 import { sendHoldNotification } from "../../services/emailApi";
-import { translations } from "../../utils/translations"; // Import your translations
+import { translations } from "../../utils/translations";
 
 const Footer = () => {
   const location = useLocation();
   const path = location.pathname;
   const navigate = useNavigate();
 
-  // Pull language from context
   const {
     language,
     displayCheckouts,
@@ -21,23 +19,17 @@ const Footer = () => {
     setCheckouts,
     setDisplayCheckins,
     setDisplayCheckouts,
-    setHolds,
     API_BASE,
-    setAllHolds,
-    setAllCheckouts,
-    setPatrons,
     displayHolds,
-    biblios,
-    patrons
+    setDisplayHolds
   } = useKiosk();
 
-  // Translation helper
   const t: any = (translations as any)[language];
-
-  const locationBefore = location.state?.from;
   const wrapperClass = "fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[1080px] max-h-[1920px] bg-[#34495e] py-6 text-white flex justify-between px-8 text-[25px]";
 
-  // --- LOGIC FUNCTIONS (Unchanged) ---
+  // --- UPDATED LOGIC FUNCTIONS ---
+
+  // 1. Removed all "Fetch All" useEffects and local functions
   const handleRenewAll = async () => {
     if (checkouts.length === 0) {
       return Swal.fire({ title: "No items", text: "You have no items to renew.", icon: "info" });
@@ -46,99 +38,98 @@ const Footer = () => {
     try {
       const promises = checkouts.map(checkout => axios.post(`${API_BASE}/api/v1/renew`, { checkout_id: checkout.checkout_id }));
       await Promise.allSettled(promises);
-      const response = await axios.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`);
+      
+      // Live fetch only THIS patron's checkouts after renewal
+      const response = await axios.post(`${API_BASE}/api/v1/my-books`, { patronId });
       setCheckouts(response.data);
+      
       Swal.fire({ title: 'Processed!', text: 'Renewal attempted.', icon: 'success', timer: 2000, showConfirmButton: false });
     } catch (error) {
       Swal.fire({ title: 'Error', text: 'Failed to process.', icon: 'error' });
     }
   };
 
-  const fetchHolds = async () => { try { const response = await axios.get(`${API_BASE}/api/v1/holds?patronId=${patronId}`); setHolds(response.data); } catch (e) { console.error(e); } };
-  const fetchAllHolds = async () => { try { const response = await axios.get(`${API_BASE}/api/v1/holds`); setAllHolds(response.data); } catch (e) { console.error(e); } };
-  const fetchAllCheckouts = async () => { try { const response = await axios.get(`${API_BASE}/api/v1/checkouts`); setAllCheckouts(response.data); } catch (e) { console.error(e); } };
-  const fetchPatrons = async () => { try { const res = await axios.get(`${API_BASE}/api/v1/patrons`); setPatrons(res.data); } catch (e) { console.error(e); } };
-
-  useEffect(() => { if (patronId) { fetchHolds(); fetchAllHolds(); fetchAllCheckouts(); fetchPatrons(); }; }, [patronId, API_BASE]);
-
   const handleFinalCheckin = async () => {
-    await fetchAllHolds();
-    const allValidated = displayHolds.length === 0;
-    if (allValidated) {
+    // We no longer need to call fetchAllHolds(). 
+    // displayHolds is already populated during the scanning phase in CheckinPage.
+    const hasHolds = displayHolds.length > 0;
+
+    if (!hasHolds) {
       Swal.fire({ title: 'Processing Returns...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
       try {
-        const promises = displayCheckins.map(item => fetch(`${API_BASE}/api/checkin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ barcode: item.barcode }) }));
+        const promises = displayCheckins.map(item => axios.post(`${API_BASE}/api/checkin`, { barcode: item.barcode }));
         await Promise.all(promises);
         navigate("/success", { state: { from: path } });
         Swal.close();
-      } catch (error) { Swal.fire({ title: 'Error', text: 'Failed.', icon: 'error' }); }
+      } catch (error) { 
+        Swal.fire({ title: 'Error', text: 'Failed to process returns.', icon: 'error' }); 
+      }
     } else {
+      // If holds were detected during scan, navigate to warning page
       Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 500));
       Swal.close();
       navigate("/onholddetected");
     }
   };
 
   const handleFinalCheckout = async () => {
-  if (displayCheckouts.length === 0) return;
-
-  Swal.fire({
-    title: 'Processing...',
-    text: 'Finalizing your checkouts...',
-    didOpen: () => Swal.showLoading(),
-    allowOutsideClick: false
-  });
-
-  try {
-    // Loop through the staged items and perform actual Koha checkout
-    for (const item of displayCheckouts) {
-      // This calls the backend POST route which now performs the checks
-      await axios.post(`${API_BASE}/api/checkout-book/${item.externalId}/${patronId}`);
+    if (displayCheckouts.length === 0) return;
+    Swal.fire({ title: 'Processing...', text: 'Finalizing your checkouts...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+    try {
+      for (const item of displayCheckouts) {
+        await axios.post(`${API_BASE}/api/checkout-book/${item.externalId}/${patronId}`);
+      }
+      Swal.close();
+      navigate("/success", { state: { from: path } });
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || "Checkout failed";
+      Swal.fire({ title: "Error", text: errorMessage, icon: 'error', confirmButtonColor: '#3498db' });
     }
-
-    Swal.close();
-    // Do NOT clear setDisplayCheckouts here so SuccessPage can see them
-    navigate("/success", { state: { from: path } });
-
-  } catch (error: any) {
-    console.error("Final Checkout Error:", error);
-
-    // This extracts the specific string we created in the backend
-    const errorMessage = error.response?.data?.error || "Checkout failed";
-
-    Swal.fire({ 
-      title: "Error", 
-      text: errorMessage, 
-      icon: 'error',
-      confirmButtonColor: '#3498db' // Matches your UI
-    });
-  }
-};
-
-  const handleCancel = () => { setDisplayCheckouts([]); setDisplayCheckins([]); navigate("/home"); };
+  };
 
   const handleContinue = async () => {
     Swal.fire({ title: 'Processing...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
     try {
-      const promises = displayCheckins.map(item => fetch(`${API_BASE}/api/checkin`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ barcode: item.barcode }) }));
+      // 1. Process the returns first
+      const promises = displayCheckins.map(item => axios.post(`${API_BASE}/api/checkin`, { barcode: item.barcode }));
       await Promise.all(promises);
-      const priorityHolds = displayHolds.filter((hold: any) => Number(hold.priority) === 1);
-      for (const hold of priorityHolds) {
-        const biblio = biblios.find((b: any) => Number(b.biblio_id) === Number(hold.biblio_id));
-        const patron = patrons.find((p: any) => Number(p.patron_id) === Number(hold.patron_id));
-        await sendHoldNotification(
-          biblio?.title || "Book",
-          patron ? `${patron.firstname} ${patron.surname}` : "Patron",
-          language // Pass the current language state ('EN' | 'JP' | 'KO')
-        );
+
+      // 2. Live Hydrate only the detected holds to get names/titles for the email
+      // This avoids using the massive global patrons/biblios arrays
+      const hydration = await axios.post(`${API_BASE}/api/v1/hydrate-detected-holds`, {
+        holds: displayHolds
+      });
+
+      const hydratedHolds = hydration.data;
+
+      // 3. Send notifications for priority 1 holds
+      for (const hold of hydratedHolds) {
+        if (Number(hold.priority) === 1) {
+          await sendHoldNotification(
+            hold.title || "Book",
+            hold.patronName || "Patron",
+            language
+          );
+        }
       }
+
       navigate("/success", { state: { from: '/checkin' } });
       Swal.close();
-    } catch (error) { Swal.fire({ title: 'Error', icon: 'error' }); }
+    } catch (error) { 
+      console.error(error);
+      Swal.fire({ title: 'Error', text: 'Failed to process holds.', icon: 'error' }); 
+    }
   };
 
-  // --- RENDER LOGIC (Translated) ---
+  const handleCancel = () => { 
+    setDisplayCheckouts([]); 
+    setDisplayCheckins([]); 
+    setDisplayHolds([]); // Clear detected holds on cancel
+    navigate("/home"); 
+  };
+
+  // --- RENDER LOGIC (Styles and JSX kept exactly the same) ---
 
   if (path === '/home') {
     return (
@@ -216,8 +207,8 @@ const Footer = () => {
 
   else if (path === '/success') {
     const handleMoreCheckout = () => { setDisplayCheckouts([]); navigate("/checkout"); };
-    const handleMoreCheckin = () => { setDisplayCheckins([]); navigate("/checkin"); };
-    const handleDone = () => { setDisplayCheckouts([]); setDisplayCheckins([]); navigate("/home"); };
+    const handleMoreCheckin = () => { setDisplayCheckins([]); setDisplayHolds([]); navigate("/checkin"); };
+    const handleDone = () => { setDisplayCheckouts([]); setDisplayCheckins([]); setDisplayHolds([]); navigate("/home"); };
 
     return (
       <div className={wrapperClass}>
@@ -225,7 +216,7 @@ const Footer = () => {
           <div className="mr-2">🏠</div>
           <div>{t.done}</div>
         </button>
-        {locationBefore === '/checkout' ? (
+        {location.state?.from === '/checkout' ? (
           <button className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300" onClick={handleMoreCheckout}>
             <div>{t.checkout_more}</div>
           </button>
