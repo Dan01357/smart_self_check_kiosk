@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react'; // Added useState
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 import { useKiosk } from '../context/KioskContext';
@@ -17,26 +17,30 @@ const RenewItemsPage = () => {
     language 
   } = useKiosk();
   
+  // Local loading state to prevent "Unknown Title" flash
+  const [loading, setLoading] = useState(true);
+
   const t: any = (translations as any)[language] || translations.EN;
 
-  // 1. Initial Data Fetching - Using POST to hide the patronId from the URL
   useEffect(() => {
     const fetchData = async () => {
       if (!patronId) return;
+      setLoading(true);
       try {
-        // CHANGED: Using .post instead of .get to protect patron privacy
         const response = await axios.post(`${API_BASE}/api/v1/my-books`, {
           patronId: patronId
         });
         setCheckouts(response.data);
       } catch (e) {
         console.error("Data fetch failed", e);
+      } finally {
+        setLoading(false); // Data is ready
       }
     };
     fetchData();
   }, [patronId, API_BASE, setCheckouts]);
 
-  // 2. Renewal Handler
+  // handleRenew remains identical to your working code...
   const handleRenew = async (checkoutId: number, title: string) => {
     const result = await Swal.fire({
       title: t.confirm_renewal,
@@ -69,7 +73,6 @@ const RenewItemsPage = () => {
             showConfirmButton: false
           });
 
-          // Refresh the list using the secure POST method
           const updatedCheckouts = await axios.post(`${API_BASE}/api/v1/my-books`, {
             patronId: patronId
           });
@@ -78,14 +81,9 @@ const RenewItemsPage = () => {
       } catch (error: any) {
         const errorMsg = error.response?.data?.error || "";
         let friendlyMessage = t.err_generic;
-
-        if (errorMsg.includes("too_many_holds")) {
-          friendlyMessage = t.err_reserved;
-        } else if (errorMsg.includes("too_many_renewals")) {
-          friendlyMessage = t.err_limit;
-        } else if (errorMsg.includes("overdue") || errorMsg.includes("restriction")) {
-          friendlyMessage = t.err_overdue;
-        }
+        if (errorMsg.includes("too_many_holds")) friendlyMessage = t.err_reserved;
+        else if (errorMsg.includes("too_many_renewals")) friendlyMessage = t.err_limit;
+        else if (errorMsg.includes("overdue") || errorMsg.includes("restriction")) friendlyMessage = t.err_overdue;
 
         Swal.fire({ title: t.renewal_blocked, text: friendlyMessage, icon: 'error' });
       }
@@ -106,7 +104,7 @@ const RenewItemsPage = () => {
           </div>
           <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
             <span>{t.renewable_items}</span>
-            <span>{checkouts.length}</span>
+            <span>{loading ? "..." : checkouts.length}</span>
           </div>
           <div className='flex justify-between py-[15px] text-[26px]'>
             <span>{t.std_extension}</span>
@@ -120,33 +118,28 @@ const RenewItemsPage = () => {
           </div>
 
           <div className='flex flex-col gap-5'>
-            {checkouts.map((checkout: any) => {
-              // Access the hydrated title from the backend response
+            {loading ? (
+                // Show a clean loading message instead of "Unknown Title"
+                <div className="text-center py-10 text-[24px] text-gray-400 italic">
+                    {t.scanning_items}...
+                </div>
+            ) : checkouts.map((checkout: any) => {
               const title = checkout.title || "Unknown Title";
               const isOverdue = diffInDaysAccountPage(checkout) <= 0;
 
               return (
                 <div key={checkout.checkout_id} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[#3498db] border-l-[8px] shadow-sm'>
                   <div className='text-[60px] min-w-[60px] mr-6'>📖</div>
-
                   <div className='flex-grow'>
-                    <div className='text-[28px] font-bold text-[#2c3e50] leading-tight mb-1'>
-                      {title}
-                    </div>
-                    <div className='text-[20px] text-[#7f8c8d] mb-2'>
-                      {t.current_due}: {formatDate(checkout.due_date)}
-                    </div>
-
+                    <div className='text-[28px] font-bold text-[#2c3e50] leading-tight mb-1'>{title}</div>
+                    <div className='text-[20px] text-[#7f8c8d] mb-2'>{t.current_due}: {formatDate(checkout.due_date)}</div>
                     <div className='flex items-center gap-3'>
                       <span className={`text-[18px] px-3 py-1 rounded-full font-bold ${isOverdue ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
                         {isOverdue ? t.overdue_label : t.active_loan}
                       </span>
-                      <span className='text-[18px] text-gray-400'>
-                        | {t.renewals_used}: {checkout.renewals_count || 0}
-                      </span>
+                      <span className='text-[18px] text-gray-400'>| {t.renewals_used}: {checkout.renewals_count || 0}</span>
                     </div>
                   </div>
-
                   <button
                     onClick={() => handleRenew(checkout.checkout_id, title)}
                     className='bg-[#3498db] hover:bg-[#2980b9] text-white px-[35px] py-[20px] rounded-[12px] text-[24px] font-bold transition-all active:scale-95 shadow-md flex items-center gap-2'
@@ -157,21 +150,15 @@ const RenewItemsPage = () => {
               );
             })}
 
-            {checkouts.length === 0 && (
-              <div className="text-center py-20 text-[28px] text-gray-500">
-                {t.no_items_checked_out}
-              </div>
+            {!loading && checkouts.length === 0 && (
+              <div className="text-center py-20 text-[28px] text-gray-500">{t.no_items_checked_out}</div>
             )}
           </div>
         </div>
 
         <div className='bg-[#e3f2fd] border-l-[5px] border-l-solid border-l-[#1565c0] rounded-[20px] p-[30px] mt-[30px]'>
-          <div className="text-[26px] font-bold text-[#1565c0] mb-[10px] flex items-center gap-[10px]">
-            ℹ️ {t.renewal_policy}
-          </div>
-          <div className="text-[20px] text-[#1565c0] opacity-80">
-            {t.renewal_policy_text}
-          </div>
+          <div className="text-[26px] font-bold text-[#1565c0] mb-[10px] flex items-center gap-[10px]">ℹ️ {t.renewal_policy}</div>
+          <div className="text-[20px] text-[#1565c0] opacity-80">{t.renewal_policy_text}</div>
         </div>
       </div>
 

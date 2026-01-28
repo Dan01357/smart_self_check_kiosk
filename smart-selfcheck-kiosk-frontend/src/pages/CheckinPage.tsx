@@ -22,64 +22,60 @@ const CheckinPage = () => {
 
   const t: any = (translations as any)[language] || translations.EN;
 
-  // 1. Data Fetching Logic (REMOVED: No longer fetching ALL items/biblios)
   useEffect(() => {
     if (!patronId) return;
-    // We no longer need to pre-fetch everything here as we fetch per-scan now
   }, [patronId]);
 
+  // handleManualEntry now matches the flow and style of CheckoutPage
   const handleManualEntry = () => {
     openKeyboard(async (barcodeValue) => {
-      // Local check for duplicates
+      // 1. Local duplicate check (Same as CheckoutPage)
       if (displayCheckins.some((i: any) => i.barcode === barcodeValue)) {
         return Swal.fire({ title: t.already_added, icon: 'info', timer: 1000, showConfirmButton: false });
       }
 
+      // 2. Loading state (Same as CheckoutPage)
       Swal.fire({ title: t.scanning_items, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
       try {
-        // A. Verify if the book is actually checked out
-        const checkoutCheck = await axios.get(`${API_BASE}/api/check-book-incheckouts/${barcodeValue}`);
-        const checkoutData = checkoutCheck.data.checkoutRes[0];
+        // 3. Fetch data from backend
+        const checkInCheckout = await axios.get(`${API_BASE}/api/check-book-incheckouts/${barcodeValue}`);
+        const checkInHolds = await axios.get(`${API_BASE}/api/check-book-inholds/${barcodeValue}`);
 
-        if (!checkoutData) {
-          return Swal.fire({ title: t.action_denied, text: t.not_in_list, icon: 'error' });
+        // Logic check: If it's not checked out, it cannot be checked in
+        if (checkInCheckout.data.checkoutRes.length === 0) {
+          return Swal.fire({
+            title: "Error",
+            text: t.not_in_list,
+            icon: 'warning'
+          });
         }
 
-        // B. Check for holds
-        const holdCheck = await axios.get(`${API_BASE}/api/check-book-inholds/${barcodeValue}`);
-        const hasHold = holdCheck.data.holdRes.length > 0;
+        // 4. Get book details for UI
+        const response = await axios.get(`${API_BASE}/api/book-details/${barcodeValue}`);
+        const bookData = response.data;
 
-        // C. Get book details (Title/BiblioID)
-        const bookDetails = await axios.get(`${API_BASE}/api/book-details/${barcodeValue}`);
-        const details = bookDetails.data;
-
-        // D. Calculate Overdue status
+        const checkoutData = checkInCheckout.data.checkoutRes[0];
         const isActuallyOverdue = new Date(checkoutData.due_date) < new Date();
+        const hasHold = checkInHolds.data.holdRes.length > 0;
 
         const newReturn = {
-          biblioId: details.biblio_id,
-          title: details.title || "Unknown Title",
+          biblioId: bookData.biblio_id,
+          title: bookData.title || "Unknown Title",
           barcode: barcodeValue,
           isOverdue: isActuallyOverdue,
           dueDate: checkoutData.due_date,
-          isOnHold: hasHold // Storing this directly for UI logic
+          isOnHold: hasHold
         };
 
-        // E. If a hold is detected, add it to global displayHolds for the OnHoldDetected page logic
+        // 5. Global Hold detection (for navigation logic)
         if (hasHold) {
-            setDisplayHolds((prev: any) => [...holdCheck.data.holdRes, ...prev]);
+          setDisplayHolds((prev: any) => [...checkInHolds.data.holdRes, ...prev]);
         }
 
+        // 6. Update List and show success Swal (Matching style of CheckoutPage)
         setDisplayCheckins((prev: any) => [newReturn, ...prev]);
-        
-        Swal.fire({ 
-            title: t.scanned_swal, 
-            text: `${newReturn.title} ${t.added_to_return}`, 
-            icon: 'success', 
-            timer: 1500, 
-            showConfirmButton: false 
-        });
+        Swal.close();
 
       } catch (error: any) {
         console.error("Checkin Scan Error:", error);
@@ -114,12 +110,14 @@ const CheckinPage = () => {
           <div className='font-bold text-[rgb(44_62_80)] flex items-center justify-between mb-4'>
             <div className='text-[32px]'>{t.items_returned_label} ({displayCheckins.length})</div>
             <div className='text-white bg-[#3498db] py-[8px] px-[20px] rounded-[20px] text-[24px]'>
-              {(displayCheckins.length === 0 || displayCheckins.length === 1) ? `${displayCheckins.length} ${t.one_item}` : `${displayCheckins.length} ${t.multiple_items}`}
+              {displayCheckins.length === 1
+                ? t.one_item
+                : `${displayCheckins.length} ${t.multiple_items}`
+              }
             </div>
           </div>
           <div className='flex flex-col gap-5'>
             {displayCheckins.map((scannedItem: any, index: number) => {
-              // Date logic strictly using the item properties added during scan
               const today = new Date();
               today.setHours(0, 0, 0, 0);
               const dueDateObj = new Date(scannedItem.dueDate);
@@ -128,8 +126,6 @@ const CheckinPage = () => {
               const diffInDaysNormalized = Math.round((dueDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
               const isOverdue = diffInDaysNormalized < 0;
               const daysLate = Math.abs(diffInDaysNormalized);
-              
-              // Hold logic using the property we added during the async scan
               const isOnHold = scannedItem.isOnHold;
 
               let statusColor = '#3498db';
@@ -149,8 +145,8 @@ const CheckinPage = () => {
                     <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{scannedItem.title}</div>
                     <div className='text-[20px] text-[rgb(127_140_141)]'>{t.barcode_label}: {scannedItem.barcode}</div>
                     <div className='text-[20px] text-[rgb(127_140_141)]'>
-                      {isOnHold 
-                        ? t.on_hold 
+                      {isOnHold
+                        ? t.on_hold
                         : isOverdue
                           ? `${daysLate} ${daysLate === 1 ? t.day_overdue : t.days_overdue}`
                           : t.returned_on_time

@@ -5,18 +5,23 @@ import { useKiosk } from '../context/KioskContext';
 import axios from 'axios';
 import { formatDate } from '../utils/formatDate';
 import Swal from 'sweetalert2';
-import { translations } from '../utils/translations'; // Import
+import { translations } from '../utils/translations';
 
 const HoldsPage = () => {
-  const { patronId, biblios, holds, setHolds, API_BASE, language } = useKiosk();
+  // REMOVED: biblios (We no longer need to find titles locally)
+  const { patronId, holds, setHolds, API_BASE, language } = useKiosk();
   const [loading, setLoading] = useState(true);
 
-  // Translation helper
-  const t:any = (translations as any)[language ] || translations.EN;
+  const t: any = (translations as any)[language] || translations.EN;
+
   const fetchHolds = async () => {
+    if (!patronId) return;
     setLoading(true);
     try {
-      const response = await axios.get(`${API_BASE}/api/v1/holds?patronId=${patronId}`);
+      // SECURE POST: Hides ID from URL and gets titles from server
+      const response = await axios.post(`${API_BASE}/api/v1/my-holds`, {
+        patronId: patronId
+      });
       setHolds(response.data);
     } catch (e) {
       console.error("Holds fetch failed", e);
@@ -26,7 +31,7 @@ const HoldsPage = () => {
   };
 
   useEffect(() => {
-    if (patronId) fetchHolds();
+    fetchHolds();
   }, [patronId]);
 
   const handleCancelHold = async (holdId: number, title: string) => {
@@ -42,7 +47,12 @@ const HoldsPage = () => {
     });
     
     if (result.isConfirmed) {
-      Swal.showLoading();
+      Swal.fire({
+        title: t.scanning_items || "Processing...",
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+      });
+
       try {
         const response = await axios.delete(`${API_BASE}/api/v1/holds`, {
           params: { holdId: holdId }
@@ -81,33 +91,32 @@ const HoldsPage = () => {
       <div className='pt-60 flex p-[40px] flex-col overflow-auto pb-30'>
         <div className='text-center text-[42px] mb-[35px] text-[#2c3e50] font-bold'>{t.my_holds_reserves}</div>
 
-        {/* --- SUMMARY CARD --- */}
         <div className='bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[40px] text-white mb-[30px] shadow-lg'>
           <div className='flex justify-around items-center'>
             <div className='text-center'>
-              <div className='text-[50px] font-bold'>{holds.length}</div>
+              <div className='text-[50px] font-bold'>{loading ? "..." : holds.length}</div>
               <div className='text-[20px] opacity-80'>{t.total_holds}</div>
             </div>
             <div className='w-[2px] h-[80px] bg-white/30'></div>
             <div className='text-center'>
               <div className='text-[50px] font-bold'>
-                {holds.filter(h => h.waiting_date).length}
+                {loading ? "..." : holds.filter((h: any) => h.waiting_date).length}
               </div>
               <div className='text-[20px] opacity-80'>{t.ready_for_pickup}</div>
             </div>
           </div>
         </div>
 
-        {/* --- HOLDS LIST --- */}
         <div className='bg-[rgb(236_240_241)] p-[30px] rounded-[15px]'>
           <div className='flex flex-col gap-5'>
             {loading ? (
               <div className="text-center py-20 text-[28px]">{t.loading_holds}</div>
             ) : holds.length > 0 ? (
               holds.map((hold: any) => {
-                const biblioInfo = biblios.find((b: any) => b.biblio_id === hold.biblio_id);
                 const status = getStatusDisplay(hold);
-                const title = biblioInfo?.title || t.loading_title;
+                
+                // FIX: Use the hydrated title from the POST response
+                const title = hold.title || "Unknown Title";
 
                 return (
                   <div key={hold.hold_id} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[8px] shadow-sm' style={{ borderLeftColor: hold.waiting_date ? '#2ecc71' : '#f39c12' }}>
@@ -145,7 +154,6 @@ const HoldsPage = () => {
           </div>
         </div>
 
-        {/* --- INFO BOX --- */}
         <div className='bg-[#fff3e0] border-l-[5px] border-l-solid border-l-[#ff9800] rounded-[20px] p-[30px] mt-[30px]'>
           <div className="text-[26px] font-bold text-[#e65100] mb-[10px]">
             📌 {t.pickup_instructions}

@@ -159,35 +159,76 @@ app.get('/api/book-details/:barcode', async (req, res) => {
 // NEW SECURE ROUTE: Hidden Patron Book Lookup
 app.post('/api/v1/my-books', async (req, res) => {
     try {
-        const { patronId } = req.body; // Hidden in the request body
+        const { patronId } = req.body;
+        if (!patronId) return res.status(400).json({ error: "Identification required" });
 
-        if (!patronId) {
-            return res.status(400).json({ error: "Identification required" });
-        }
-
-        // 1. Get ONLY this patron's checkouts
+        // 1. Get the checkouts (1 call)
         const checkouts = await safeKohaGet(`/patrons/${patronId}/checkouts`);
+        if (checkouts.length === 0) return res.json([]);
 
-        // 2. Fetch titles only for these specific checkouts
-        // This is fast because it only fetches the 3-5 books the user actually has
-        const hydratedCheckouts = await Promise.all(checkouts.map(async (c) => {
-            const item = await safeKohaGet(`/items/${c.item_id}`);
-            const biblio = await safeKohaGet(`/biblios/${item.biblio_id}`);
+        // 2. Collect all item_ids and fetch them in ONE call
+        const itemIds = checkouts.map(c => c.item_id);
+        // We use the 'q' parameter with an 'in' operator to get all items at once
+        const items = await safeKohaGet(`/items?q={"item_id":{"-in":[${itemIds.join(',')}]}}`);
+
+        // 3. Collect all biblio_ids from those items and fetch them in ONE call
+        const biblioIds = items.map(i => i.biblio_id);
+        const biblios = await safeKohaGet(`/biblios?q={"biblio_id":{"-in":[${biblioIds.join(',')}]}}`);
+
+        // 4. Map them together in memory (instant)
+        const hydratedCheckouts = checkouts.map(checkout => {
+            const item = items.find(i => i.item_id === checkout.item_id);
+            const biblio = item ? biblios.find(b => b.biblio_id === item.biblio_id) : null;
             
-            return { 
-                ...c, 
-                title: biblio.title || "Unknown Title" 
+            return {
+                ...checkout,
+                title: biblio ? biblio.title : "Unknown Title"
             };
-        }));
+        });
 
         res.json(hydratedCheckouts);
     } catch (error) {
-        console.error("Privacy Route Error:", error.message);
-        res.status(500).json({ error: "Failed to fetch your books" });
+        console.error("Optimized Route Error:", error.message);
+        res.status(500).json({ error: "Failed to fetch books" });
     }
 });
 
+// SECURE POST: Fetch patron's holds with titles (Fast Batching)
+app.post('/api/v1/my-holds', async (req, res) => {
+    try {
+        const { patronId } = req.body;
+        if (!patronId) return res.status(400).json({ error: "Identification required" });
 
+        // 1. Get the holds for this patron
+        const holds = await safeKohaGet(`/patrons/${patronId}/holds`);
+        
+        // If no holds, stop here and return empty array
+        if (!holds || holds.length === 0) return res.json([]);
+
+        // 2. Batch fetch titles (1 call for all biblios)
+        // Use Set to handle cases where a patron has multiple holds on the same title
+        const biblioIds = [...new Set(holds.map(h => h.biblio_id))];
+        
+        // Fast batch request to Koha
+        const biblios = await safeKohaGet(`/biblios?q={"biblio_id":{"-in":[${biblioIds.join(',')}]}}`);
+
+        // 3. Map together in memory (Instant)
+        const hydratedHolds = holds.map(hold => {
+            const biblio = Array.isArray(biblios) ? biblios.find(b => b.biblio_id === hold.biblio_id) : null;
+            return {
+                ...hold,
+                title: biblio ? biblio.title : "Unknown Title"
+            };
+        });
+
+        // 4. Send to Kiosk
+        res.json(hydratedHolds);
+
+    } catch (error) {
+        console.error("My Holds Error:", error.message);
+        res.status(500).json({ error: "Failed to fetch holds" });
+    }
+});
 
 
 function getSipTimestamp() {
