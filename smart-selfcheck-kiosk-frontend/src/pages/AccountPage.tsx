@@ -6,7 +6,13 @@ import axios from 'axios'
 import { formatDate } from '../utils/formatDate'
 import { translations } from '../utils/translations'
 
+/**
+ * AccountPage Component
+ * Provides a comprehensive view of the patron's library account, 
+ * including current checkouts, active holds, and an overview of their standing.
+ */
 const AccountPage = () => {
+  // Destructuring shared state from the KioskContext
   const {
     checkouts,
     setCheckouts,
@@ -17,10 +23,19 @@ const AccountPage = () => {
     language 
   } = useKiosk()
 
+  // Local state to manage the loading view while fetching API data
   const [loading, setLoading] = useState(true);
+  
+  // Translation helper for multi-language support (EN, JP, KO)
   const t: any = (translations as any)[language] || translations.EN;
 
+  /**
+   * Data Fetching Effect:
+   * Triggers whenever the patronId or API_BASE changes.
+   * Calls the backend proxy to get live checkout and hold data from Koha.
+   */
   useEffect(() => {
+    // If no patron is logged in, clear existing lists and exit
     if (!patronId) {
       setHolds([]);
       setCheckouts([]);
@@ -30,11 +45,13 @@ const AccountPage = () => {
     const fetchAllAccountData = async () => {
       setLoading(true);
       try {
+        // Parallel fetching of books and holds for efficiency
         const [checkoutsRes, holdsRes] = await Promise.all([
           axios.post(`${API_BASE}/api/v1/my-books`, { patronId }),
           axios.post(`${API_BASE}/api/v1/my-holds`, { patronId })
         ]);
         
+        // Update global context with retrieved data
         setCheckouts(checkoutsRes.data);
         setHolds(holdsRes.data);
       } catch (e) {
@@ -47,21 +64,31 @@ const AccountPage = () => {
     fetchAllAccountData();
   }, [patronId, API_BASE, setCheckouts, setHolds]);
 
+  /**
+   * Logic to count how many books in the checkout list are past their due date.
+   */
   const totalOverdueBooks = checkouts.reduce((totalOverdue, book) => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0); // Normalize time for accurate day comparison
     const dueDate = new Date(book.due_date);
     dueDate.setHours(0, 0, 0, 0);
     return dueDate < today ? totalOverdue + 1 : totalOverdue
   }, 0)
 
+  /**
+   * Helper function to determine visual styling and labels for different hold statuses.
+   * Logic matches Koha hold shelf states.
+   */
   const getHoldDisplay = (hold: any) => {
+    // Case 1: Book is already at the library waiting for the patron
     if (hold.waiting_date) {
       return { label: t.ready_pickup, color: '#2ecc71', icon: '✅', rightIcon: '📍' };
     }
+    // Case 2: Book is moving between library branches
     if (hold.transit_date) {
       return { label: t.in_transit, color: '#3498db', icon: '🚚', rightIcon: '📦' };
     }
+    // Case 3: Book is still with another patron or on the shelf (Waiting in queue)
     return {
       label: `${t.pending} (#${hold.priority} ${t.in_line})`,
       color: '#f39c12',
@@ -70,6 +97,7 @@ const AccountPage = () => {
     };
   };
 
+  // Count of holds that are specifically in the 'waiting' (ready) state
   const readyHoldsCount = holds.filter(h => h.waiting_date).length;
 
   return (
@@ -79,6 +107,7 @@ const AccountPage = () => {
       <div className='pt-60 flex p-[40px] flex-col overflow-auto pb-30'>
         <div className='text-center text-[42px] mb-[35px] text-[#2c3e50] font-bold '>{t.acc_overview}</div>
 
+        {/* ACCOUNT STATUS SUMMARY CARD */}
         <div className='bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[40px] text-white mb-[30px] shadow-lg'>
           <div className='text-[36px] font-bold mb-[30px] text-center'>{t.curr_status}</div>
           <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30 text-[26px]'>
@@ -101,6 +130,7 @@ const AccountPage = () => {
           </div>
         </div>
 
+        {/* LIST OF BOOKS CURRENTLY BORROWED */}
         <div className='bg-[rgb(236_240_241)] p-[30px] rounded-[15px] mb-[30px]'>
           <div className='font-bold text-[rgb(44_62_80)] mb-4 text-[32px]'>{t.currently_checked_out}</div>
           <div className='flex flex-col gap-5'>
@@ -108,7 +138,8 @@ const AccountPage = () => {
                 <div className="text-center py-10 text-[22px] text-gray-500 italic">{t.scanning_items}...</div>
             ) : checkouts.length > 0 ? checkouts.map((checkout: any) => {
               const title = checkout.title || "Unknown Title";
-              const isOnHold = checkout.is_on_hold_for_others || false; // Backend now provides this
+              // Flag indicating if someone else is waiting for this specific copy
+              const isOnHold = checkout.is_on_hold_for_others || false; 
 
               const today = new Date();
               today.setHours(0, 0, 0, 0);
@@ -121,6 +152,7 @@ const AccountPage = () => {
               const daysLate = Math.abs(diffInDaysNormalized);
               const daysLeft = diffInDaysNormalized;
 
+              // Color logic: Red = Overdue, Orange = Recall/Hold by another, Blue = OK
               let statusColor = '#3498db';
               let statusEmoji = '📘';
 
@@ -149,6 +181,7 @@ const AccountPage = () => {
           </div>
         </div>
 
+        {/* LIST OF RESERVATIONS / HOLDS */}
         <div className='bg-[rgb(236_240_241)] p-[30px] rounded-[15px]'>
           <div className='font-bold text-[rgb(44_62_80)] mb-4 text-[32px]'>{t.my_holds_reserves}</div>
           <div className='flex flex-col gap-5'>

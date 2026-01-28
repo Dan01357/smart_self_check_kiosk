@@ -5,11 +5,17 @@ import axios from "axios";
 import { sendHoldNotification } from "../../services/emailApi";
 import { translations } from "../../utils/translations";
 
+/**
+ * Footer Component
+ * Acts as the main navigation and action bar for the Kiosk.
+ * Its content changes dynamically based on the current URL path.
+ */
 const Footer = () => {
   const location = useLocation();
   const path = location.pathname;
   const navigate = useNavigate();
 
+  // Destructuring state and functions from the Kiosk Context
   const {
     language,
     displayCheckouts,
@@ -24,22 +30,30 @@ const Footer = () => {
     setDisplayHolds
   } = useKiosk();
 
+  // Load translations based on selected language
   const t: any = (translations as any)[language];
+  
+  // Base styling for the footer container
   const wrapperClass = "fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[1080px] max-h-[1920px] bg-[#34495e] py-6 text-white flex justify-between px-8 text-[25px]";
 
-  // --- UPDATED LOGIC FUNCTIONS ---
+  // --- ACTION FUNCTIONS ---
 
-  // 1. Removed all "Fetch All" useEffects and local functions
+  /**
+   * handleRenewAll:
+   * Iterates through all items currently checked out by the patron and attempts to renew them.
+   * After renewal, it re-fetches the list to update the UI with new due dates.
+   */
   const handleRenewAll = async () => {
     if (checkouts.length === 0) {
       return Swal.fire({ title: "No items", text: "You have no items to renew.", icon: "info" });
     }
     Swal.fire({ title: 'Renewing all items...', text: 'Please wait...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     try {
+      // Map checkouts to renewal API promises
       const promises = checkouts.map(checkout => axios.post(`${API_BASE}/api/v1/renew`, { checkout_id: checkout.checkout_id }));
       await Promise.allSettled(promises);
       
-      // Live fetch only THIS patron's checkouts after renewal
+      // Refresh the local checkout list for the specific patron
       const response = await axios.post(`${API_BASE}/api/v1/my-books`, { patronId });
       setCheckouts(response.data);
       
@@ -49,14 +63,19 @@ const Footer = () => {
     }
   };
 
+  /**
+   * handleFinalCheckin:
+   * Finalizes the return process. If a book has a hold (reservation) by another patron, 
+   * it redirects to a warning page instead of finishing immediately.
+   */
   const handleFinalCheckin = async () => {
-    // We no longer need to call fetchAllHolds(). 
-    // displayHolds is already populated during the scanning phase in CheckinPage.
+    // Check if any holds were identified during the scanning process
     const hasHolds = displayHolds.length > 0;
 
     if (!hasHolds) {
       Swal.fire({ title: 'Processing Returns...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
       try {
+        // Send check-in commands for all scanned items
         const promises = displayCheckins.map(item => axios.post(`${API_BASE}/api/checkin`, { barcode: item.barcode }));
         await Promise.all(promises);
         navigate("/success", { state: { from: path } });
@@ -65,7 +84,7 @@ const Footer = () => {
         Swal.fire({ title: 'Error', text: 'Failed to process returns.', icon: 'error' }); 
       }
     } else {
-      // If holds were detected during scan, navigate to warning page
+      // Holds detected: show loading then navigate to the hold notification screen
       Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
       await new Promise(resolve => setTimeout(resolve, 500));
       Swal.close();
@@ -73,10 +92,15 @@ const Footer = () => {
     }
   };
 
+  /**
+   * handleFinalCheckout:
+   * Finalizes the borrowing process for all items currently in the 'displayCheckouts' list.
+   */
   const handleFinalCheckout = async () => {
     if (displayCheckouts.length === 0) return;
     Swal.fire({ title: 'Processing...', text: 'Finalizing your checkouts...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
     try {
+      // Sequentially process checkouts for each item
       for (const item of displayCheckouts) {
         await axios.post(`${API_BASE}/api/checkout-book/${item.externalId}/${patronId}`);
       }
@@ -88,6 +112,13 @@ const Footer = () => {
     }
   };
 
+  /**
+   * handleContinue (On Hold Detected):
+   * Executed when a patron returns a book that is reserved by someone else.
+   * 1. Completes the check-in.
+   * 2. Hydrates data (gets names/titles).
+   * 3. Sends email notifications to the next patron in the queue.
+   */
   const handleContinue = async () => {
     Swal.fire({ title: 'Processing...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
     try {
@@ -95,15 +126,14 @@ const Footer = () => {
       const promises = displayCheckins.map(item => axios.post(`${API_BASE}/api/checkin`, { barcode: item.barcode }));
       await Promise.all(promises);
 
-      // 2. Live Hydrate only the detected holds to get names/titles for the email
-      // This avoids using the massive global patrons/biblios arrays
+      // 2. Fetch full details (Title, Patron Name) for the holds detected
       const hydration = await axios.post(`${API_BASE}/api/v1/hydrate-detected-holds`, {
         holds: displayHolds
       });
 
       const hydratedHolds = hydration.data;
 
-      // 3. Send notifications for priority 1 holds
+      // 3. Notify the patron whose hold is now at the front of the queue (Priority 1)
       for (const hold of hydratedHolds) {
         if (Number(hold.priority) === 1) {
           await sendHoldNotification(
@@ -122,24 +152,30 @@ const Footer = () => {
     }
   };
 
+  /**
+   * handleCancel:
+   * Resets all temporary transaction lists and returns the user to the home screen.
+   */
   const handleCancel = () => { 
     setDisplayCheckouts([]); 
     setDisplayCheckins([]); 
-    setDisplayHolds([]); // Clear detected holds on cancel
+    setDisplayHolds([]); 
     navigate("/home"); 
   };
 
-  // --- RENDER LOGIC (Styles and JSX kept exactly the same) ---
+  // --- RENDER LOGIC ---
 
+  // Default Home Screen Footer (Status info)
   if (path === '/home') {
     return (
       <div className={wrapperClass}>
         <div><span className="text-[#2ecc71]">● {t.available}</span> | {t.kiosk_num}</div>
-        <div>📍 {t.main_floor} | ⏰ {t.service_24_7}</div>
+        <div>📍 {t.main_floor} | {t.service_24_7}</div>
       </div>
     );
   }
 
+  // Authentication/Login Screen Footer
   else if (path === '/') {
     return (
       <div className={wrapperClass}>
@@ -156,6 +192,7 @@ const Footer = () => {
     );
   }
 
+  // General Account View Footer
   else if (path === '/account') {
     return (
       <div className={wrapperClass}>
@@ -169,6 +206,7 @@ const Footer = () => {
     );
   }
 
+  // Checkout Scanning Screen Footer
   else if (path === '/checkout') {
     const isListEmpty = displayCheckouts.length === 0;
     return (
@@ -187,6 +225,7 @@ const Footer = () => {
     );
   }
 
+  // Return Scanning Screen Footer
   else if (path === '/checkin') {
     const isListEmpty = displayCheckins.length === 0;
     return (
@@ -205,6 +244,7 @@ const Footer = () => {
     );
   }
 
+  // Transaction Success Screen Footer
   else if (path === '/success') {
     const handleMoreCheckout = () => { setDisplayCheckouts([]); navigate("/checkout"); };
     const handleMoreCheckin = () => { setDisplayCheckins([]); setDisplayHolds([]); navigate("/checkin"); };
@@ -216,6 +256,7 @@ const Footer = () => {
           <div className="mr-2">🏠</div>
           <div>{t.done}</div>
         </button>
+        {/* Conditional button based on whether user came from return or checkout */}
         {location.state?.from === '/checkout' ? (
           <button className="py-[15px] px-[35px] rounded-[8px] bg-[rgb(46_204_113)] hover:bg-[rgb(39_174_96)] transition-all duration-300" onClick={handleMoreCheckout}>
             <div>{t.checkout_more}</div>
@@ -229,6 +270,7 @@ const Footer = () => {
     );
   }
 
+  // Renewal Screen Footer
   else if (path === '/renew') {
     return (
       <div className={wrapperClass}>
@@ -243,6 +285,7 @@ const Footer = () => {
     );
   }
 
+  // Holds/Reservations List Footer
   else if (path === '/hold') {
     return (
       <div className={wrapperClass}>
@@ -254,6 +297,7 @@ const Footer = () => {
     );
   }
 
+  // Warning screen when a returned book has a hold for another patron
   else if (path === '/onholddetected') {
     return (
       <div className={wrapperClass}>
@@ -264,6 +308,7 @@ const Footer = () => {
     );
   }
 
+  // Help Screen Footer
   else if (path === '/help') {
     return (
       <div className={wrapperClass}>

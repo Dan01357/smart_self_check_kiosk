@@ -1,12 +1,15 @@
-import { lazy, Suspense } from "react"; // Added lazy and Suspense
+import { lazy, Suspense } from "react"; // Importing lazy for code-splitting and Suspense to handle loading states
 import { Route, Routes } from "react-router-dom";
 
-// 1. Keep non-page components as regular imports (they are small and needed for logic)
+// 1. Regular Imports: These components are loaded immediately because they handle 
+// core logic (Auth guards) or are small enough to be included in the main bundle.
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import PublicRoute from "./components/auth/PublicRoute";
 import KeyboardPad from "./components/common/KeyboardPad";
 
-// 2. Lazy load all Page components
+// 2. Lazy Loading: These page components are only downloaded by the browser 
+// when the user actually navigates to the specific route. This improves 
+// the initial loading speed of the application.
 const HomePage = lazy(() => import("./pages/HomePage"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const CheckinPage = lazy(() => import("./pages/CheckinPage"));
@@ -20,7 +23,11 @@ const HoldsPage = lazy(() => import("./pages/HoldsPage"));
 const HoldDetectedPage = lazy(() => import("./pages/HoldDetectedPage"));
 const HelpPage = lazy(() => import("./pages/HelpPage"));
 
-// Optional: A simple loading component to show during the split-second transition
+/**
+ * PageLoader:
+ * A fallback component that displays a "Loading..." message while the lazy-loaded 
+ * chunks for the pages are being fetched over the network.
+ */
 const PageLoader = () => (
   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.5rem', fontWeight: 'bold' }}>
     Loading...
@@ -30,16 +37,27 @@ const PageLoader = () => (
 function App() {
   return (
     <>
-      {/* 3. Wrap Routes in Suspense to handle the loading state of lazy components */}
+      {/* 
+          3. Suspense Wrapper:
+          All Routes containing lazy-loaded components must be wrapped in <Suspense>. 
+          The 'fallback' prop defines what UI is shown while waiting for the code to load.
+      */}
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* Guest only routes */}
+          {/* 
+              Guest only routes:
+              PublicRoute prevents logged-in users from accessing the login page.
+          */}
           <Route element={<PublicRoute />}>
             <Route path="/" element={<LoginPage />} />
             <Route path="/qr" element={<MyQRCode />} />
           </Route>
 
-          {/* Protected Routes */}
+          {/* 
+              Protected Routes:
+              ProtectedRoute ensures only authenticated patrons can access 
+              kiosk features like checkout, return, and account management.
+          */}
           <Route element={<ProtectedRoute />}>
             <Route path="/home" element={<HomePage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
@@ -52,12 +70,16 @@ function App() {
             <Route path="/help" element={<HelpPage />} />
           </Route>
 
-          {/* 404 */}
+          {/* 404 - Catch-all route for any undefined URLs */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
 
-      {/* Global Keyboard */}
+      {/* 
+          Global Keyboard:
+          Placed outside the Routes so it can be triggered from any page 
+          in the application for data entry via the touch interface.
+      */}
       <KeyboardPad />
     </>
   );

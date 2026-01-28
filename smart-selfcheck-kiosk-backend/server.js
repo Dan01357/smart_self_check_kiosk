@@ -1,15 +1,18 @@
 import express from "express";
 import cors from "cors";
-import net from "net"
+import net from "net";
 import axios from "axios";
 import 'dotenv/config';
 import { Resend } from "resend";
 
 const app = express();
+
+// Middlewares for Cross-Origin requests and JSON body parsing
 app.use(cors());
 app.use(express.json());
 
 // --- CONFIGURATION ---
+// Koha server connection details and API credentials
 const KOHA_URL = "http://192.168.0.149:8080/api/v1";
 const KOHA_USER = "administrator";
 const KOHA_PASS = "Zxcqwe123$";
@@ -17,6 +20,7 @@ const KOHA_IP_SIP2 = '192.168.0.149';
 const KOHA_PORT_SIP2 = 6001;
 const resend = new Resend('re_QEgYTzMs_PEvRVUoUqmpQr5wbzouhgcDm');
 
+// Basic Authentication header generation for Koha REST API
 const token = Buffer.from(`${KOHA_USER}:${KOHA_PASS}`).toString('base64');
 const authHeader = {
     'Accept': 'application/json',
@@ -26,6 +30,10 @@ const authHeader = {
 
 // --- HELPER FUNCTIONS ---
 
+/**
+ * Executes a GET request to Koha with error handling to prevent server crashes.
+ * Uses the global authHeader for authentication.
+ */
 async function safeKohaGet(endpoint) {
     try {
         const response = await axios.get(`${KOHA_URL}${endpoint}`, { headers: authHeader });
@@ -36,22 +44,31 @@ async function safeKohaGet(endpoint) {
     }
 }
 
+/**
+ * Generates a timestamp formatted specifically for the SIP2 protocol (YYYYMMDD    HHMMSS).
+ */
 function getSipTimestamp() {
     const now = new Date();
     return `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}    ${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
 }
 
+/**
+ * Communicates with the Koha SIP2 server via TCP Sockets.
+ * Used primarily for Check-in operations as it handles library status updates effectively.
+ */
 function sendSipMessage(message) {
     return new Promise((resolve, reject) => {
         const client = new net.Socket();
         let responseData = '';
         client.connect(KOHA_PORT_SIP2, KOHA_IP_SIP2, () => {
+            // SIP2 requires a login message before sending the actual command
             const login = "9300CNsip_username|COSip2pass|CPMARAWI|\r";
             client.write(login + message + "\r");
         });
         client.on('data', (data) => {
             responseData += data.toString();
             const lines = responseData.split(/[\r\n]+/);
+            // Look for the Check-in response code '10'
             const checkinResponse = lines.find(line => line.startsWith('10'));
             if (checkinResponse) { client.destroy(); resolve(checkinResponse); }
         });
@@ -62,6 +79,9 @@ function sendSipMessage(message) {
 
 // --- AUTHENTICATION ROUTES ---
 
+/**
+ * Validates if a patron exists based on their cardnumber.
+ */
 app.get("/api/v1/auth/check-patron/:cardnumber", async (req, res) => {
     const { cardnumber } = req.params;
     const query = JSON.stringify({ cardnumber });
@@ -70,6 +90,9 @@ app.get("/api/v1/auth/check-patron/:cardnumber", async (req, res) => {
     res.json({ success: !!patron });
 });
 
+/**
+ * Handles patron login by returning basic patron identification data.
+ */
 app.post("/api/v1/auth/login", async (req, res) => {
     try {
         const { cardnumber } = req.body;
@@ -91,7 +114,9 @@ app.post("/api/v1/auth/login", async (req, res) => {
 
 // --- LIVE SCANNING & TRANSACTION ROUTES ---
 
-// Fixed: Uses encoded JSON query to prevent "Malformed" error and "Returns everything" bug
+/**
+ * Checks if a specific book (via barcode) is currently checked out by anyone.
+ */
 app.get('/api/check-book-incheckouts/:barcode', async (req, res) => {
     const itemsRes = await safeKohaGet(`/items?external_id=${req.params.barcode}`);
     const exactBook = itemsRes.find(item => String(item.external_id) === String(req.params.barcode));
@@ -102,6 +127,9 @@ app.get('/api/check-book-incheckouts/:barcode', async (req, res) => {
     res.json({ checkoutRes });
 });
 
+/**
+ * Checks if a scanned book has any active reservations (holds) on it.
+ */
 app.get('/api/check-book-inholds/:barcode', async (req, res) => {
     try {
         const { barcode } = req.params;
@@ -110,12 +138,10 @@ app.get('/api/check-book-inholds/:barcode', async (req, res) => {
 
         if (!exactBook) return res.status(404).json({ error: "Book not found" });
 
-        // Koha REST API v1 for holds works best with this specific JSON structure
         const query = JSON.stringify({ biblio_id: exactBook.biblio_id });
         const holdRes = await safeKohaGet(`/holds?q=${encodeURIComponent(query)}`);
         
-        // Safety check: Filter the results to make sure they match the biblio_id 
-        // (In case Koha ignores the filter)
+        // Filter to ensure data strictly matches the biblio_id
         const actualHolds = holdRes.filter(h => h.biblio_id === exactBook.biblio_id);
         
         res.json({ holdRes: actualHolds });
@@ -124,6 +150,9 @@ app.get('/api/check-book-inholds/:barcode', async (req, res) => {
     }
 });
 
+/**
+ * Standard checkout process using Koha REST API.
+ */
 app.post('/api/checkout-book/:barcode/:patronId', async (req, res) => {
     try {
         const { barcode, patronId } = req.params;
@@ -142,6 +171,10 @@ app.post('/api/checkout-book/:barcode/:patronId', async (req, res) => {
     }
 });
 
+/**
+ * Performs book check-in using the SIP2 protocol (Command 09).
+ * Also checks if the book was returned past its due date.
+ */
 app.post('/api/checkin', async (req, res) => {
     try {
         const { barcode } = req.body;
@@ -153,6 +186,7 @@ app.post('/api/checkin', async (req, res) => {
             const checkouts = await safeKohaGet(`/checkouts?q=${encodeURIComponent(query)}`);
             if (checkouts[0]) isOverdue = new Date(checkouts[0].due_date) < new Date();
         }
+        // SIP2 message for check-in
         const result = await sendSipMessage(`09N${getSipTimestamp()}${getSipTimestamp()}|APMARAWI|AOMARAWI|AB${barcode}|`);
         res.json({ success: result.substring(0, 3) === '101', isOverdue });
     } catch (error) {
@@ -160,6 +194,9 @@ app.post('/api/checkin', async (req, res) => {
     }
 });
 
+/**
+ * Fetches combined item and title information for display in the UI.
+ */
 app.get('/api/book-details/:barcode', async (req, res) => {
     const itemsRes = await safeKohaGet(`/items?external_id=${req.params.barcode}`);
     const exactBook = itemsRes.find(item => String(item.external_id) === String(req.params.barcode));
@@ -171,30 +208,31 @@ app.get('/api/book-details/:barcode', async (req, res) => {
 
 // --- PATRON ACCOUNT ROUTES ---
 
+/**
+ * Retrieves all books currently borrowed by a patron.
+ * Logic included to detect if a book cannot be renewed because another patron has a hold on it.
+ */
 app.post('/api/v1/my-books', async (req, res) => {
     try {
         const { patronId } = req.body;
         if (!patronId) return res.status(400).json({ error: "Identification required" });
 
-        // 1. Get the checkouts
         const checkouts = await safeKohaGet(`/patrons/${patronId}/checkouts`);
         if (checkouts.length === 0) return res.json([]);
 
-        // 2. Collect IDs for batch fetching
         const itemIds = checkouts.map(c => c.item_id);
         const items = await safeKohaGet(`/items?q=${encodeURIComponent(JSON.stringify({ item_id: { "-in": itemIds } }))}`);
         const biblioIds = items.map(i => i.biblio_id);
         const biblios = await safeKohaGet(`/biblios?q=${encodeURIComponent(JSON.stringify({ biblio_id: { "-in": biblioIds } }))}`);
 
-        // 3. FETCH HOLDS for these biblios to see if OTHERS are waiting
+        // Check if there are active holds on these items from other patrons
         const holds = await safeKohaGet(`/holds?q=${encodeURIComponent(JSON.stringify({ biblio_id: { "-in": biblioIds } }))}`);
 
-        // 4. Map them together
         const hydratedCheckouts = checkouts.map(checkout => {
             const item = items.find(i => i.item_id === checkout.item_id);
             const biblio = item ? biblios.find(b => b.biblio_id === item.biblio_id) : null;
             
-            // LOGIC: Is there a hold on this biblio for anyone OTHER than the current patron?
+            // Logic: Is there a hold on this biblio for anyone OTHER than the current patron?
             const hasHoldForOthers = holds.some(h => 
                 h.biblio_id === item?.biblio_id && 
                 String(h.patron_id) !== String(patronId)
@@ -203,7 +241,7 @@ app.post('/api/v1/my-books', async (req, res) => {
             return {
                 ...checkout,
                 title: biblio ? biblio.title : "Unknown Title",
-                is_on_hold_for_others: hasHoldForOthers // This flag triggers the Orange UI
+                is_on_hold_for_others: hasHoldForOthers 
             };
         });
 
@@ -213,6 +251,10 @@ app.post('/api/v1/my-books', async (req, res) => {
         res.status(500).json({ error: "Failed to fetch books" });
     }
 });
+
+/**
+ * Retrieves all active reservations (holds) for a specific patron.
+ */
 app.post('/api/v1/my-holds', async (req, res) => {
     try {
         const { patronId } = req.body;
@@ -220,8 +262,6 @@ app.post('/api/v1/my-holds', async (req, res) => {
         if (!holds || holds.length === 0) return res.json([]);
 
         const biblioIds = [...new Set(holds.map(h => h.biblio_id))];
-        
-        // Ensure the -in operator is formatted correctly as a JSON array
         const biblioQuery = JSON.stringify({ "biblio_id": { "-in": biblioIds } });
         const biblios = await safeKohaGet(`/biblios?q=${encodeURIComponent(biblioQuery)}`);
 
@@ -237,6 +277,9 @@ app.post('/api/v1/my-holds', async (req, res) => {
     }
 });
 
+/**
+ * Renews a checkout via Koha REST API.
+ */
 app.post('/api/v1/renew', async (req, res) => {
     try {
         const response = await axios.post(`${KOHA_URL}/checkouts/${req.body.checkout_id}/renewal`, {}, { headers: authHeader });
@@ -248,6 +291,9 @@ app.post('/api/v1/renew', async (req, res) => {
 
 // --- HYDRATION & EMAILS ---
 
+/**
+ * Replaces IDs with actual Names and Titles for UI display.
+ */
 app.post('/api/v1/hydrate-detected-holds', async (req, res) => {
     const { holds } = req.body;
     const bibIds = [...new Set(holds.map(h => h.biblio_id))];
@@ -263,10 +309,7 @@ app.post('/api/v1/hydrate-detected-holds', async (req, res) => {
     })));
 });
 
-// Ensure Resend is initialized at the top of your file
-// import { Resend } from "resend";
-// const resend = new Resend('re_QEgYTzMs_PEvRVUoUqmpQr5wbzouhgcDm');
-
+// Translation dictionary for multi-language email notifications
 const emailTranslations = {
     EN: {
         subject: "Book Ready: ",
@@ -309,6 +352,9 @@ const emailTranslations = {
     }
 };
 
+/**
+ * Sends a notification email to a patron when their reserved book is returned/available.
+ */
 app.post('/api/v1/send-hold-email', async (req, res) => {
     const { bookTitle, patronName, language } = req.body;
 
@@ -321,7 +367,7 @@ app.post('/api/v1/send-hold-email', async (req, res) => {
     try {
         const { data, error } = await resend.emails.send({
             from: 'NTEK Koha <onboarding@resend.dev>',
-            to: ['daniloalvaro031717@gmail.com'], // Hardcoded as requested
+            to: ['daniloalvaro031717@gmail.com'], 
             subject: `${lang.subject}${bookTitle}`,
             html: `
         <div style="font-family: sans-serif; color: #2c3e50; line-height: 1.6;">
@@ -355,13 +401,14 @@ app.post('/api/v1/send-hold-email', async (req, res) => {
 
 
 app.post('/api/v1/send-hold-email', async (req, res) => {
-    // ... existing email code ...
     res.json({ message: "Notification handled" });
 });
 
 // --- DELETE (CANCEL) HOLD ROUTE ---
+/**
+ * Cancels an active reservation (hold) for a patron.
+ */
 app.delete('/api/v1/holds', async (req, res) => {
-    // Get holdId from query string (sent via axios params: { holdId })
     const { holdId } = req.query;
 
     if (!holdId) {
@@ -377,7 +424,6 @@ app.delete('/api/v1/holds', async (req, res) => {
             { headers: authHeader }
         );
 
-        // Koha returns 204 No Content on success
         if (response.status === 204 || response.status === 200) {
             console.log(`Successfully cancelled Hold: ${holdId}`);
             return res.json({ success: true, message: "Hold cancelled" });
@@ -386,7 +432,6 @@ app.delete('/api/v1/holds', async (req, res) => {
     } catch (error) {
         console.error("KOHA DELETE HOLD ERROR:", error.response?.data || error.message);
         
-        // Extract specific error from Koha if available
         const status = error.response?.status || 400;
         const msg = error.response?.data?.error || "Hold cannot be cancelled (it might be in transit or ready)";
 
@@ -394,4 +439,5 @@ app.delete('/api/v1/holds', async (req, res) => {
     }
 });
 
+// Start the server
 app.listen(4040, "0.0.0.0", () => console.log("CLEAN SERVER: Running on 4040"));

@@ -3,12 +3,25 @@ import Footer from "../components/common/Footer";
 import { Link } from "react-router-dom";
 import { useKiosk } from "../context/KioskContext";
 import { useEffect } from "react";
-import { translations } from "../utils/translations"; // Import your mapping
+import { translations } from "../utils/translations"; // Import localization mapping
 
+/**
+ * HomePage Component
+ * Acts as the main dashboard for the kiosk after a patron has logged in.
+ * It provides clear navigation buttons for all library services.
+ */
 const HomePage = () => {
+  // Extracting necessary state and setters from the Kiosk context
   const { setDisplayCheckins, setDisplayCheckouts, language } = useKiosk();
-  const t = translations[language]; // Get current language strings
+  
+  // Selecting the appropriate translation strings based on the user's selected language
+  const t = (translations as any)[language]; 
 
+  /**
+   * useEffect Cleanup:
+   * Whenever a user arrives at the Home Page, we clear the temporary scanning lists
+   * for check-ins and check-outs to ensure a fresh session for the next transaction.
+   */
   useEffect(() => {
     setDisplayCheckins([]);
     setDisplayCheckouts([]);
@@ -19,12 +32,16 @@ const HomePage = () => {
       <Header />
 
       <div className="max-w-400 m-auto flex flex-col justify-center items-center pt-60 pb-30">
+        {/* Welcome Text Section */}
         <div className="text-[40px] font-[700] pb-10 flex flex-col items-center">
           <div>{t.welcome}</div>
           <div>{t.ask_action}</div>
         </div>
 
+        {/* Navigation Grid/List */}
         <div className="flex flex-col gap-[25px]">
+          
+          {/* Borrowing / Checkout Button */}
           <Link to="/checkout">
             <button className="bg-gradient-to-br from-[#667eea] to-[#764ba2] w-[900px] py-[60px] px-[40px] rounded-[20px] hover:-translate-y-[5px] hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)] transition-all duration-300">
               <div className="flex items-center">
@@ -39,6 +56,7 @@ const HomePage = () => {
             </button>
           </Link>
 
+          {/* Return / Check-in Button */}
           <Link to="/checkin">
             <button className="bg-gradient-to-br from-[#667eea] to-[#764ba2] w-[900px] py-[60px] px-[40px] rounded-[20px] hover:-translate-y-[5px] hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)] transition-all duration-300">
               <div className="flex items-center">
@@ -53,6 +71,7 @@ const HomePage = () => {
             </button>
           </Link>
 
+          {/* Book Renewal Button */}
           <Link to="/renew">
             <button className="bg-gradient-to-br from-[#667eea] to-[#764ba2] w-[900px] py-[60px] px-[40px] rounded-[20px] hover:-translate-y-[5px] hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)] transition-all duration-300">
               <div className="flex items-center">
@@ -67,6 +86,7 @@ const HomePage = () => {
             </button>
           </Link>
 
+          {/* Reservations / Holds List Button */}
           <Link to="/hold">
             <button className="bg-gradient-to-br from-[#667eea] to-[#764ba2] w-[900px] py-[60px] px-[40px] rounded-[20px] hover:-translate-y-[5px] hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)] transition-all duration-300">
               <div className="flex items-center">
@@ -81,6 +101,7 @@ const HomePage = () => {
             </button>
           </Link>
 
+          {/* Personal Account Information Button */}
           <Link to="/account">
             <button className="bg-gradient-to-br from-[#667eea] to-[#764ba2] w-[900px] py-[60px] px-[40px] rounded-[20px] hover:-translate-y-[5px] hover:shadow-[0_15px_40px_rgba(0,0,0,0.3)] transition-all duration-300">
               <div className="flex items-center">

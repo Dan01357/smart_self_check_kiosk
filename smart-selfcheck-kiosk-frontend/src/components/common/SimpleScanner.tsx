@@ -7,7 +7,13 @@ import { useLocation, useNavigate } from 'react-router';
 import { translations } from '../../utils/translations';
 import axios from 'axios';
 
+/**
+ * SimpleScanner Component
+ * Handles hardware barcode/QR scanner input via global keyboard event listeners.
+ * Processes scanning logic for Login, Checkout, and Check-in paths.
+ */
 function SimpleScanner() {
+  // scanBuffer stores incoming keystrokes from the hardware scanner (which acts as a keyboard)
   const scanBuffer = useRef("");
   const {
     setPatronId, setShowScanner, patronId,
@@ -19,20 +25,27 @@ function SimpleScanner() {
   const location = useLocation();
   const currentLocation = location.pathname;
 
+  // Translation helper based on the current kiosk language
   const t: any = (translations as any)[language] || translations.EN;
 
   // --- Logic Handlers ---
+
+  /**
+   * handleLogin:
+   * Validates a scanned patron card number against the Koha database via the backend API.
+   */
  const handleLogin = async (cardNumber: string) => {
-  // Loading indicator immediately after scan
+  // Show loading while verifying patron identity
   Swal.fire({ title: t.scanning_items, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
   try {
-    // Direct Login with only cardnumber
+    // Authenticate with the scanned card number
     const response = await axios.post(`${API_BASE}/api/v1/auth/login`, {
       cardnumber: String(cardNumber)
     });
 
     if (response.data.success === "true") {
+      // Set patron info in global context on success
       setPatronId(response.data.patron_id);
       setPatronName(response.data.patron_name);
       handleLoginSuccess();
@@ -45,9 +58,11 @@ function SimpleScanner() {
         showConfirmButton: false 
       });
       
+      // Redirect to the checkout page
       navigate("/checkout", { replace: true, state: location.state });
     }
   } catch (error: any) {
+    // Show error if card is invalid or patron not found
     Swal.fire({ 
       title: t.login_invalid_title, 
       text: `${t.card_label || "Card"} ${cardNumber} ${t.not_found}`, 
@@ -55,8 +70,14 @@ function SimpleScanner() {
     });
   }
 };
+
+  /**
+   * handleCheckoutLogic:
+   * Validates a scanned book barcode for borrowing.
+   * Checks for local duplicates, remote checkout status, and existing holds.
+   */
   const handleCheckoutLogic = useCallback(async (barcodeValue: string) => {
-    // 1. Local Duplicate Check
+    // 1. Local Duplicate Check: Ensure the book isn't already in the current scanning session list
     if (displayCheckouts.some((i: any) => i.externalId === barcodeValue)) {
       return Swal.fire({ title: t.already_added, icon: 'info', timer: 1000, showConfirmButton: false });
     }
@@ -64,7 +85,7 @@ function SimpleScanner() {
     Swal.fire({ title: t.scanning_items, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     try {
-      // 2. LIVE Check: Is it already checked out?
+      // 2. LIVE Check: Check if the book is already checked out to someone else in Koha
       const checkInCheckout = await axios.get(`${API_BASE}/api/check-book-incheckouts/${barcodeValue}`);
       if (checkInCheckout.data.checkoutRes.length > 0) {
         const c = checkInCheckout.data.checkoutRes[0];
@@ -75,19 +96,21 @@ function SimpleScanner() {
         }
       }
 
-      // 3. LIVE Check: Is it reserved?
+      // 3. LIVE Check: Check if the book is reserved (held) for a different patron
       const checkInHolds = await axios.get(`${API_BASE}/api/check-book-inholds/${barcodeValue}`);
       if (checkInHolds.data.holdRes.length > 0) {
         const activeHolds = checkInHolds.data.holdRes.sort((a: any, b: any) => a.priority - b.priority);
+        // If someone else is first in the queue, this patron cannot borrow it
         if (String(activeHolds[0].patron_id) !== String(patronId)) {
           return Swal.fire({ title: "Error", text: "A book is already reserved by someone else", icon: 'warning' });
         }
       }
 
-      // 4. Fetch Details for UI display
+      // 4. Fetch Details: Get title and ID for display in the scan list UI
       const response = await axios.get(`${API_BASE}/api/book-details/${barcodeValue}`);
       const bookData = response.data;
 
+      // Calculate estimated due date (Default 14 days)
       const estDate = new Date();
       estDate.setDate(estDate.getDate() + 14);
       const formattedEstDue = estDate.toLocaleDateString('en-US', {
@@ -102,6 +125,7 @@ function SimpleScanner() {
         checkoutDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
       };
 
+      // Add to checkout list state
       setDisplayCheckouts((prev: any) => [newSessionItem, ...prev]);
       Swal.close();
 
@@ -119,7 +143,13 @@ function SimpleScanner() {
     }
   }, [displayCheckouts, patronId, API_BASE, t, setDisplayCheckouts]);
 
+  /**
+   * handleCheckinLogic:
+   * Validates a scanned book barcode for returning.
+   * Checks if it's currently borrowed and detects if it satisfies a reservation (hold).
+   */
   const handleCheckinLogic = useCallback(async (barcodeValue: string) => {
+    // Local duplicate check for current return session
     if (displayCheckins.some((i: any) => i.barcode === barcodeValue)) {
       return Swal.fire({ title: t.already_added, icon: 'info', timer: 1000, showConfirmButton: false });
     }
@@ -127,7 +157,7 @@ function SimpleScanner() {
     Swal.fire({ title: t.scanning_items, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     try {
-      // 1. Fetch live checkout info
+      // 1. Fetch live checkout info to ensure the book is actually borrowed
       const checkRes = await axios.get(`${API_BASE}/api/check-book-incheckouts/${barcodeValue}`);
       const checkoutData = checkRes.data.checkoutRes[0];
 
@@ -135,13 +165,14 @@ function SimpleScanner() {
         return Swal.fire({ title: t.not_found, text: t.not_in_list, icon: 'error' });
       }
 
-      // 2. NEW: Fetch hold info (Missing in your original scanner logic)
+      // 2. Fetch hold info: See if another patron is waiting for this book
       const holdRes = await axios.get(`${API_BASE}/api/check-book-inholds/${barcodeValue}`);
       const hasHold = holdRes.data.holdRes.length > 0;
 
-      // 3. Fetch Biblio info
+      // 3. Fetch Biblio info for UI title display
       const bookDetails = await axios.get(`${API_BASE}/api/book-details/${barcodeValue}`);
 
+      // Check if the book return is overdue
       const isActuallyOverdue = new Date(checkoutData.due_date) < new Date();
 
       const newReturn = {
@@ -150,10 +181,10 @@ function SimpleScanner() {
         barcode: barcodeValue,
         isOverdue: isActuallyOverdue,
         dueDate: checkoutData.due_date,
-        isOnHold: hasHold // Store this so SuccessPage can see it
+        isOnHold: hasHold // Flag to trigger routing to hold shelf after check-in
       };
 
-      // 4. Update Global Holds state (Crucial for the "On Hold Detected" screen)
+      // 4. Update Global Holds state: Tracks which holds are satisfied during this return session
       if (hasHold) {
         setDisplayHolds((prev: any) => [...holdRes.data.holdRes, ...prev]);
       }
@@ -164,21 +195,27 @@ function SimpleScanner() {
     } catch (error) {
       Swal.fire({ title: t.not_found, text: t.barcode_error, icon: 'warning' });
     }
-}, [displayCheckins, API_BASE, t, setDisplayCheckins, setDisplayHolds]); // Added setDisplayHolds to dependencies
+}, [displayCheckins, API_BASE, t, setDisplayCheckins, setDisplayHolds]);
 
   // --- Hardware Event Listener ---
+  /**
+   * Monitors keyboard events globally. 
+   * Hardware HID scanners transmit barcodes as a rapid sequence of keys followed by 'Enter'.
+   */
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
+        // Process the accumulated buffer once 'Enter' is received
         if (scanBuffer.current.trim().length > 0) {
           const code = scanBuffer.current.trim();
           if (currentLocation === '/') handleLogin(code);
           else if (currentLocation === '/checkout') handleCheckoutLogic(code);
           else if (currentLocation === '/checkin') handleCheckinLogic(code);
-          scanBuffer.current = "";
+          scanBuffer.current = ""; // Reset buffer after processing
         }
       } else if (e.key.length === 1) {
+        // Build the barcode string character by character
         scanBuffer.current += e.key;
       }
     };
@@ -187,7 +224,7 @@ function SimpleScanner() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentLocation, handleCheckoutLogic, handleCheckinLogic]);
 
-  // Render Login Scanner Overlay
+  // Render Logic Scanner Overlay only on the landing/login page
   if (currentLocation === '/') {
     return (
       <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/20 backdrop-blur-[15px]">

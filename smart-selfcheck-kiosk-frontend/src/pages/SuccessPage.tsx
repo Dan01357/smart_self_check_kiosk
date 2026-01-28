@@ -9,33 +9,52 @@ import { translations } from '../utils/translations'; // Import
 const SuccessPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Access global state for processed checkouts, checkins, and active holds
   const { displayCheckouts, setDisplayCheckouts, displayCheckins, setDisplayCheckins, displayHolds, language } = useKiosk()
+  
+  // Determine if the user arrived here from the checkout or checkin flow
   const locationBefore = location.state?.from;
 
-  // Translation helper
+  // Initialize translation object based on selected language
   const t:any = (translations as any)[language ] || translations.EN;
   
+  // Normalize current date for comparison calculations
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  /**
+   * Process returned items to determine their specific status.
+   * Checks if an item is overdue or if it's currently reserved by another patron.
+   */
   const itemsWithStatus = displayCheckins.map(item => {
     const dueDateObj = new Date(item.dueDate);
     dueDateObj.setHours(0, 0, 0, 0);
+    
+    // Calculate difference in days to check for lateness
     const diffInDaysNormalized = Math.round((dueDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     const isOverdue = diffInDaysNormalized < 0;
     const daysLate = Math.abs(diffInDaysNormalized);
+    
+    // Check if the returned item has a pending hold in the system
     const isOnHold = displayHolds.some((hold: any) => Number(hold.biblio_id) === Number(item.biblioId));
+    
     return { ...item, isOverdue, daysLate, isOnHold };
   });
 
+  // Aggregated counts for the summary dashboard
   const overdueCount = itemsWithStatus.filter(i => i.isOverdue).length;
   const holdCount = itemsWithStatus.filter(i => i.isOnHold).length;
   const onTimeCount = itemsWithStatus.filter(i => !i.isOverdue).length;
 
+  /**
+   * Handles the print/email receipt action for Checkouts.
+   * Clears state and redirects to home after a short delay.
+   */
   const handlePrint = () => {
     setTimeout(() => {
       navigate('/home');
-      setDisplayCheckouts([]);
+      setDisplayCheckouts([]); // Reset checkout buffer
     }, 1500);
 
     Swal.fire({
@@ -45,10 +64,14 @@ const SuccessPage = () => {
     })
   }
 
+  /**
+   * Handles fine payment interaction for Checkins.
+   * Clears state and redirects to home after a short delay.
+   */
   const handlePayNow = () => {
     setTimeout(() => {
       navigate('/home');
-      setDisplayCheckins([]);
+      setDisplayCheckins([]); // Reset checkin buffer
     }, 1500);
 
     Swal.fire({
@@ -58,11 +81,14 @@ const SuccessPage = () => {
     })
   }
 
+  // UI rendering specifically for successful Checkouts
   if (locationBefore === '/checkout') {
     return (
       <div className='max-w-[1080px] min-h-[1920px] m-auto border-x border-x-solid border-x-gray-700'>
         <Header />
         <div className='pt-60 flex p-[40px] flex-col overflow-auto pb-30'>
+          
+          {/* Success Banner */}
           <div className='bg-[#d4edda] border-l-[#2ecc71] border-l-[5px] border-l-solid rounded-[10px] p-[40px] my-[30px] text-center'>
             <div className='text-[120px] mb-[20px]'>✅</div>
             <div className='text-[26px] text-[#155724]'>
@@ -70,6 +96,8 @@ const SuccessPage = () => {
             </div>
             <div className='text-[40px] text-[#155724] font-bold mb-[15px]'>{t.checkout_success_title}</div>
           </div>
+
+          {/* Transaction Summary Card */}
           <div className='bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[40px] text-white mb-[30px]'>
             <div className='text-[36px] font-bold mb-[30px] text-center'>{t.trans_summary}</div>
             <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30  text-[26px]'>
@@ -89,6 +117,8 @@ const SuccessPage = () => {
               <span>10 {t.per_item}</span>
             </div>
           </div>
+
+          {/* List of successfully checked out items */}
           <div className='bg-[rgb(236_240_241)] p-[30px] rounded-[15px]'>
             <div className='font-bold text-[rgb(44_62_80)] flex items-center justify-between mb-4'>
               <div className='text-[32px]'>{t.your_books_label}</div>
@@ -108,6 +138,8 @@ const SuccessPage = () => {
               }) : <div className="text-center text-gray-500">{t.no_items_display}</div>}
             </div>
           </div>
+
+          {/* Receipt Actions */}
           <div className='bg-[#e3f2fd] rounded-[15px] p-[30px] my-[25px]'>
             <div className='text-[30px] font-bold text-[#1565c0] mb-[20px] flex items-center gap-[15px]'>📧 {t.receipt_options}</div>
             <div className='grid grid-cols-2 gap-[25px] my-[25px]'>
@@ -126,11 +158,14 @@ const SuccessPage = () => {
       </div>
     )
   }
+  // UI rendering specifically for successful Checkins (Returns)
   else if (locationBefore === '/checkin') {
     return (
       <div className='max-w-[1080px] min-h-[1920px] m-auto border-x border-x-solid border-x-gray-700'>
         <Header />
         <div className='pt-60 flex p-[40px] flex-col overflow-auto pb-30'>
+          
+          {/* Success Banner */}
           <div className='bg-[#d4edda] border-l-[#2ecc71] border-l-[5px] border-l-solid rounded-[10px] p-[40px] my-[30px] text-center'>
             <div className='text-[120px] mb-[20px]'>✅</div>
             <div className='text-[26px] text-[#155724]'>
@@ -138,6 +173,8 @@ const SuccessPage = () => {
             </div>
             <div className='text-[40px] text-[#155724] font-bold mb-[15px]'>{t.return_success_title}</div>
           </div>
+
+          {/* Return Summary Statistics */}
           <div className='bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[40px] text-white mb-[30px]'>
             <div className='text-[36px] font-bold mb-[30px] text-center'>{t.return_summary}</div>
             <div className='flex justify-between py-[15px] border-b-[2px] border-b-solid border-b-white/30  text-[26px]'>
@@ -161,6 +198,8 @@ const SuccessPage = () => {
               <span>₱0</span>
             </div>
           </div>
+
+          {/* List of returned items with dynamic status indicators */}
           <div className='bg-[rgb(236_240_241)] p-[30px] rounded-[15px]'>
             <div className='font-bold text-[rgb(44_62_80)] flex items-center justify-between mb-4'>
               <div className='text-[32px]'>{t.returned_items_label}</div>
@@ -169,16 +208,17 @@ const SuccessPage = () => {
               {itemsWithStatus && itemsWithStatus.length > 0 ? itemsWithStatus.map((item, index) => {
                 const now = new Date();
 
-                let statusColor = '#3498db'; 
+                // Define visual styles based on item condition
+                let statusColor = '#3498db'; // Default Blue
                 let statusEmoji = '📘';
 
                 if (item.isOverdue) {
-                    statusColor = '#e74c3c';
+                    statusColor = '#e74c3c'; // Red
                     statusEmoji = '📕';
                 }
 
                 if (item.isOnHold) {
-                  statusColor = '#f39c12';
+                  statusColor = '#f39c12'; // Orange
                   statusEmoji = '📙';
                 }
 
@@ -193,6 +233,7 @@ const SuccessPage = () => {
                       <div className='text-[26px] font-bold text-[rgb(44_62_80)]'>{item.title}</div>
                       <div className='text-[20px] text-[rgb(127_140_141)]'>{t.returned_on} {formatDate(now)} </div>
                       
+                      {/* Detailed status messaging */}
                       {item.isOnHold ? (
                         <div className='text-[22px] font-bold' style={{ color: statusColor }}>
                           {t.on_hold}
@@ -207,6 +248,7 @@ const SuccessPage = () => {
                         </div>
                       )}
                     </div>
+                    {/* Warning icon for alerts, checkmark for standard returns */}
                     <div className='ml-auto text-[24px]' style={{ color: statusColor }}>
                       {(item.isOverdue || item.isOnHold) ? '⚠️' : '✓'}
                     </div>
@@ -215,6 +257,8 @@ const SuccessPage = () => {
               }) : <div className="text-center text-gray-500">{t.no_items_display}</div>}
             </div>
           </div>
+
+          {/* Payment CTA for potential fines */}
           <div className='bg-[#e3f2fd] rounded-[15px] p-[30px] my-[25px]'>
             <div className='text-[30px] font-bold text-[#1565c0] mb-[20px] flex items-center gap-[15px]'>💳 {t.pay_fine_now}</div>
             <div className='grid grid-cols-2 gap-[25px] my-[25px]'>
@@ -234,6 +278,7 @@ const SuccessPage = () => {
     )
   }
 
+  // Fallback UI if the user accesses the page directly without transaction data
   return (
     <div className='flex items-center justify-center h-screen'>
       <button onClick={() => navigate('/home')} className='p-4 bg-blue-500 text-white rounded'>{t.back_home}</button>

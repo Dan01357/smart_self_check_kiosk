@@ -5,15 +5,31 @@ import { useKiosk } from '../context/KioskContext';
 import { translations } from '../utils/translations';
 import axios from 'axios';
 
+/**
+ * HoldDetectedPage Component
+ * 
+ * This page is displayed when a patron returns a book that is reserved (on hold) 
+ * by another patron. It informs the current user that the book should be placed 
+ * on the hold shelf rather than returned to the general collection.
+ */
 const HoldDetectedPage = () => {
+  // Destructuring necessary state and configuration from global Kiosk context
   const { displayHolds, language, API_BASE } = useKiosk();
+  
+  // Local state to store hold data enriched with Patron Names and Book Titles
   const [hydratedHolds, setHydratedHolds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Translation helper based on the current kiosk language
   const t: any = (translations as any)[language] || translations.EN;
 
+  /**
+   * Data Hydration Effect:
+   * Converts raw hold data (IDs) into human-readable details (Names/Titles).
+   */
   useEffect(() => {
     const fetchHoldDetails = async () => {
+      // Exit if there are no holds detected
       if (!displayHolds || displayHolds.length === 0) {
         setLoading(false);
         return;
@@ -21,12 +37,12 @@ const HoldDetectedPage = () => {
 
       try {
         setLoading(true);
-        // Using the same pattern as AccountPage
+        // Call backend utility to match patron IDs with names and biblio IDs with titles
         const response = await axios.post(`${API_BASE}/api/v1/hydrate-detected-holds`, {
           holds: displayHolds
         });
         
-        // Filter for Priority 1 only as per your original logic
+        // Filter the list to only show patrons who are first in the queue (Priority 1)
         const priorityHolds = response.data.filter((h: any) => Number(h.priority) === 1);
         setHydratedHolds(priorityHolds);
       } catch (err) {
@@ -39,10 +55,11 @@ const HoldDetectedPage = () => {
     fetchHoldDetails();
   }, [displayHolds, API_BASE]);
 
-  // Derived unique values for the Summary Card
+  // Derived helper arrays for the Summary Card UI
   const uniquePatronNames = Array.from(new Set(hydratedHolds.map((h: any) => h.patronName)));
   const uniqueBranches = Array.from(new Set(hydratedHolds.map((h: any) => h.pickup_library_id || t.main_library)));
 
+  // Fallback UI if the process finishes and no priority holds were found
   if (!loading && hydratedHolds.length === 0) {
     return (
       <div className='max-w-[1080px] min-h-[1920px] m-auto bg-white'>
@@ -58,7 +75,9 @@ const HoldDetectedPage = () => {
       <Header />
 
       <div className='pt-60 flex p-[40px] flex-col overflow-auto pb-30'>
+        
         {/* --- MAIN WARNING BANNER --- */}
+        {/* Visually alerts the patron that the return requires special handling */}
         <div className='bg-[#fff3e0] border-l-[#f39c12] border-l-[5px] border-l-solid rounded-[10px] p-[40px] my-[30px] text-center'>
           <div className='text-[120px] mb-[20px] animate-bounce'>⚠️</div>
           <div className='text-[40px] text-[#e65100] font-bold mb-[15px] uppercase'>{t.hold_detected_banner}</div>
@@ -70,6 +89,7 @@ const HoldDetectedPage = () => {
         </div>
 
         {/* --- SUMMARY CARD --- */}
+        {/* Displays a high-level summary of the hold destination and priority */}
         <div className='bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-[20px] p-[40px] text-white mb-[30px] shadow-lg'>
           <div className='text-[36px] font-bold mb-[30px] text-center'>{t.hold_info_title}</div>
 
@@ -97,6 +117,7 @@ const HoldDetectedPage = () => {
         </div>
 
         {/* --- ITEM DISPLAY LIST --- */}
+        {/* Lists each specific book that has a hold attached to it */}
         <div className='bg-[rgb(236_240_241)] p-[30px] rounded-[15px] mb-8'>
           <div className='font-bold text-[rgb(44_62_80)] flex items-center justify-between mb-4'>
             <div className='text-[32px]'>{t.book_details_label}</div>
@@ -121,7 +142,8 @@ const HoldDetectedPage = () => {
           </div>
         </div>
 
-        {/* INSTRUCTIONS */}
+        {/* INSTRUCTIONS SECTION */}
+        {/* Guides the patron on where to physically place the item */}
         <div className='bg-[#fff3e0] border-l border-l-[#f39c12] rounded-[15px] p-[30px] mb-[30px] flex gap-5 items-start border-l-[6px] border-l-solid text-[#e65100]'>
           <div className='text-[40px]'>📚</div>
           <div>
@@ -130,6 +152,8 @@ const HoldDetectedPage = () => {
           </div>
         </div>
 
+        {/* REASSURANCE SECTION */}
+        {/* Confirms the transaction is safe and no manual library action is required */}
         <div className='bg-[#e3f2fd] border-l-[#2196f3] border-l-[8px] border-l-solid rounded-[15px] p-[30px] flex gap-5 items-start mb-10'>
           <div className='text-[40px]'>✅</div>
           <div>
