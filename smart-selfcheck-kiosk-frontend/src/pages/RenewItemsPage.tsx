@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'; // Added useState
+import { useEffect, useState } from 'react';
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 import { useKiosk } from '../context/KioskContext';
@@ -17,9 +17,7 @@ const RenewItemsPage = () => {
     language 
   } = useKiosk();
   
-  // Local loading state to prevent "Unknown Title" flash
   const [loading, setLoading] = useState(true);
-
   const t: any = (translations as any)[language] || translations.EN;
 
   useEffect(() => {
@@ -34,13 +32,12 @@ const RenewItemsPage = () => {
       } catch (e) {
         console.error("Data fetch failed", e);
       } finally {
-        setLoading(false); // Data is ready
+        setLoading(false);
       }
     };
     fetchData();
   }, [patronId, API_BASE, setCheckouts]);
 
-  // handleRenew remains identical to your working code...
   const handleRenew = async (checkoutId: number, title: string) => {
     const result = await Swal.fire({
       title: t.confirm_renewal,
@@ -119,32 +116,37 @@ const RenewItemsPage = () => {
 
           <div className='flex flex-col gap-5'>
             {loading ? (
-                // Show a clean loading message instead of "Unknown Title"
                 <div className="text-center py-10 text-[24px] text-gray-400 italic">
                     {t.scanning_items}...
                 </div>
             ) : checkouts.map((checkout: any) => {
               const title = checkout.title || "Unknown Title";
               const isOverdue = diffInDaysAccountPage(checkout) <= 0;
+              const isOnHold = checkout.is_on_hold_for_others === true; // Check hold status
 
               return (
-                <div key={checkout.checkout_id} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[#3498db] border-l-[8px] shadow-sm'>
-                  <div className='text-[60px] min-w-[60px] mr-6'>📖</div>
+                <div key={checkout.checkout_id} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[#3498db] border-l-[8px] shadow-sm' style={{ borderLeftColor: isOnHold ? '#f39c12' : (isOverdue ? '#e74c3c' : '#3498db') }}>
+                  <div className='text-[60px] min-w-[60px] mr-6'>{isOnHold ? '📙' : '📖'}</div>
                   <div className='flex-grow'>
                     <div className='text-[28px] font-bold text-[#2c3e50] leading-tight mb-1'>{title}</div>
                     <div className='text-[20px] text-[#7f8c8d] mb-2'>{t.current_due}: {formatDate(checkout.due_date)}</div>
                     <div className='flex items-center gap-3'>
-                      <span className={`text-[18px] px-3 py-1 rounded-full font-bold ${isOverdue ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                        {isOverdue ? t.overdue_label : t.active_loan}
+                      <span className={`text-[18px] px-3 py-1 rounded-full font-bold 
+                        ${isOnHold ? 'bg-orange-100 text-orange-600' : (isOverdue ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600')}`}>
+                        {isOnHold ? t.on_hold : (isOverdue ? t.overdue_label : t.active_loan)}
                       </span>
                       <span className='text-[18px] text-gray-400'>| {t.renewals_used}: {checkout.renewals_count || 0}</span>
                     </div>
                   </div>
+                  
+                  {/* Button is disabled if isOnHold is true */}
                   <button
-                    onClick={() => handleRenew(checkout.checkout_id, title)}
-                    className='bg-[#3498db] hover:bg-[#2980b9] text-white px-[35px] py-[20px] rounded-[12px] text-[24px] font-bold transition-all active:scale-95 shadow-md flex items-center gap-2'
+                    onClick={!isOnHold ? () => handleRenew(checkout.checkout_id, title) : undefined}
+                    disabled={isOnHold}
+                    className={`text-white px-[35px] py-[20px] rounded-[12px] text-[24px] font-bold transition-all shadow-md flex items-center gap-2 
+                      ${isOnHold ? 'bg-gray-400 cursor-not-allowed opacity-70' : 'bg-[#3498db] hover:bg-[#2980b9] active:scale-95'}`}
                   >
-                    🔄 {t.renew_btn}
+                    {isOnHold ? '🔒' : '🔄'} {t.renew_btn}
                   </button>
                 </div>
               );

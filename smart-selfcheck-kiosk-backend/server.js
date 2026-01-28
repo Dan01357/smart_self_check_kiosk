@@ -353,9 +353,45 @@ app.post('/api/v1/send-hold-email', async (req, res) => {
     }
 });
 
+
 app.post('/api/v1/send-hold-email', async (req, res) => {
     // ... existing email code ...
     res.json({ message: "Notification handled" });
+});
+
+// --- DELETE (CANCEL) HOLD ROUTE ---
+app.delete('/api/v1/holds', async (req, res) => {
+    // Get holdId from query string (sent via axios params: { holdId })
+    const { holdId } = req.query;
+
+    if (!holdId) {
+        return res.status(400).json({ error: "Missing holdId" });
+    }
+
+    try {
+        console.log(`Attempting to cancel Hold ID: ${holdId}`);
+
+        // Call Koha REST API: DELETE /holds/{hold_id}
+        const response = await axios.delete(
+            `${KOHA_URL}/holds/${holdId}`,
+            { headers: authHeader }
+        );
+
+        // Koha returns 204 No Content on success
+        if (response.status === 204 || response.status === 200) {
+            console.log(`Successfully cancelled Hold: ${holdId}`);
+            return res.json({ success: true, message: "Hold cancelled" });
+        }
+
+    } catch (error) {
+        console.error("KOHA DELETE HOLD ERROR:", error.response?.data || error.message);
+        
+        // Extract specific error from Koha if available
+        const status = error.response?.status || 400;
+        const msg = error.response?.data?.error || "Hold cannot be cancelled (it might be in transit or ready)";
+
+        res.status(status).json({ error: msg });
+    }
 });
 
 app.listen(4040, "0.0.0.0", () => console.log("CLEAN SERVER: Running on 4040"));
