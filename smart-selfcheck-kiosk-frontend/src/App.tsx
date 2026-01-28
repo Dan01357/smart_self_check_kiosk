@@ -28,8 +28,27 @@ const HelpPage = lazy(() => import("./pages/HelpPage"));
  * chunks for the pages are being fetched over the network.
  */
 const PageLoader = () => (
-  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.5rem', fontWeight: 'bold' }}>
-    Loading...
+  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', gap: '8px' }}>
+    <div className="dot"></div>
+    <div className="dot"></div>
+    <div className="dot"></div>
+
+    <style>{`
+      .dot {
+        width: 15px;
+        height: 15px;
+        background-color: #3498db;
+        border-radius: 50%;
+        animation: bounce 0.6s infinite alternate;
+      }
+      .dot:nth-child(2) { animation-delay: 0.2s; }
+      .dot:nth-child(3) { animation-delay: 0.4s; }
+
+      @keyframes bounce {
+        from { transform: translateY(0); opacity: 1; }
+        to { transform: translateY(-15px); opacity: 0.4; }
+      }
+    `}</style>
   </div>
 );
 
