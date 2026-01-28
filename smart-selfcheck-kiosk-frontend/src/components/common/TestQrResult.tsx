@@ -12,7 +12,7 @@ function SimpleScanner() {
   const {
     setPatronId, setShowScanner, patronId,
     setDisplayCheckouts, setDisplayCheckins, displayCheckouts, setPatronName,
-    displayCheckins, handleLoginSuccess, API_BASE, language // Added openKeyboard
+    displayCheckins, handleLoginSuccess, API_BASE, language,setDisplayHolds
   } = useKiosk();
 
   const navigate = useNavigate();
@@ -127,6 +127,7 @@ function SimpleScanner() {
     Swal.fire({ title: t.scanning_items, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     try {
+      // 1. Fetch live checkout info
       const checkRes = await axios.get(`${API_BASE}/api/check-book-incheckouts/${barcodeValue}`);
       const checkoutData = checkRes.data.checkoutRes[0];
 
@@ -134,7 +135,13 @@ function SimpleScanner() {
         return Swal.fire({ title: t.not_found, text: t.not_in_list, icon: 'error' });
       }
 
+      // 2. NEW: Fetch hold info (Missing in your original scanner logic)
+      const holdRes = await axios.get(`${API_BASE}/api/check-book-inholds/${barcodeValue}`);
+      const hasHold = holdRes.data.holdRes.length > 0;
+
+      // 3. Fetch Biblio info
       const bookDetails = await axios.get(`${API_BASE}/api/book-details/${barcodeValue}`);
+
       const isActuallyOverdue = new Date(checkoutData.due_date) < new Date();
 
       const newReturn = {
@@ -142,17 +149,22 @@ function SimpleScanner() {
         title: bookDetails.data.title,
         barcode: barcodeValue,
         isOverdue: isActuallyOverdue,
-        dueDate: checkoutData.due_date
+        dueDate: checkoutData.due_date,
+        isOnHold: hasHold // Store this so SuccessPage can see it
       };
+
+      // 4. Update Global Holds state (Crucial for the "On Hold Detected" screen)
+      if (hasHold) {
+        setDisplayHolds((prev: any) => [...holdRes.data.holdRes, ...prev]);
+      }
 
       setDisplayCheckins((prev: any) => [newReturn, ...prev]);
       Swal.close();
-      Swal.fire({ title: t.scanned_swal, text: `${newReturn.title} ${t.added_to_return}`, icon: 'success', timer: 1000, showConfirmButton: false });
-
+      
     } catch (error) {
       Swal.fire({ title: t.not_found, text: t.barcode_error, icon: 'warning' });
     }
-  }, [displayCheckins, API_BASE, t, setDisplayCheckins]);
+}, [displayCheckins, API_BASE, t, setDisplayCheckins, setDisplayHolds]); // Added setDisplayHolds to dependencies
 
   // --- Hardware Event Listener ---
   useEffect(() => {

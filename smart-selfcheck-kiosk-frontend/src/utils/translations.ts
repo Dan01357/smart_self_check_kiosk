@@ -169,7 +169,7 @@ export const translations = {
     status_label: "Status:",
     res_priority_1: "Reserved (Priority 1)",
     notif_sent_label: "Notification Sent:",
-    notif_channels: "Email + SMS ✓",
+    notif_channels: "Email ✓",
     book_details_label: "Book Details",
     awaiting_pickup: "Awaiting Hold Pickup",
     routed_title: "Routed to Hold Shelf",

@@ -30,7 +30,6 @@ const AccountPage = () => {
     const fetchAllAccountData = async () => {
       setLoading(true);
       try {
-        // Fetch both Checkouts and Holds using SECURE POST routes
         const [checkoutsRes, holdsRes] = await Promise.all([
           axios.post(`${API_BASE}/api/v1/my-books`, { patronId }),
           axios.post(`${API_BASE}/api/v1/my-holds`, { patronId })
@@ -109,7 +108,7 @@ const AccountPage = () => {
                 <div className="text-center py-10 text-[22px] text-gray-500 italic">{t.scanning_items}...</div>
             ) : checkouts.length > 0 ? checkouts.map((checkout: any) => {
               const title = checkout.title || "Unknown Title";
-              const isOnHold = checkout.is_on_hold_for_others || false;
+              const isOnHold = checkout.is_on_hold_for_others || false; // Backend now provides this
 
               const today = new Date();
               today.setHours(0, 0, 0, 0);
