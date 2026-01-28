@@ -3,48 +3,24 @@ import Lottie from 'lottie-react';
 import animationData from "../../assets/QR Code Scanner.json";
 import Swal from 'sweetalert2';
 import { useKiosk } from '../../context/KioskContext';
-import { api, postDataLogin } from '../../../app';
+import { postDataLogin } from '../../../app';
 import { useLocation, useNavigate } from 'react-router';
-import { translations } from '../../utils/translations'; // Import
+import { translations } from '../../utils/translations';
+import axios from 'axios';
 
 function SimpleScanner() {
   const scanBuffer = useRef("");
   const {
     setPatronId, setShowScanner, patronId,
-    setItems, items, setCheckouts, checkouts, biblios, setBiblios,
     setDisplayCheckouts, setDisplayCheckins, displayCheckouts, setPatronName, 
-    displayCheckins, handleLoginSuccess, API_BASE, language // Get language
+    displayCheckins, handleLoginSuccess, API_BASE, language 
   } = useKiosk();
 
   const navigate = useNavigate();
   const location = useLocation();
   const currentLocation = location.pathname;
 
-  // Translation helper
-  const t:any = (translations as any)[language ] || translations.EN;
-
-  // --- Centralized Data Fetching ---
-  useEffect(() => {
-    if (currentLocation === "/checkout" || currentLocation === "/checkin") {
-      const fetchData = async () => {
-        try {
-          const endpoints = [
-            api.get(`${API_BASE}/api/v1/biblios`),
-            api.get(`${API_BASE}/api/v1/items`)
-          ];
-          if (currentLocation === "/checkout" || currentLocation === "/checkin") endpoints.push(api.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`));
-
-          const [bibliosRes, itemsRes, checkoutsRes] = await Promise.all(endpoints);
-          setBiblios(bibliosRes.data);
-          setItems(itemsRes.data);
-          if (checkoutsRes) setCheckouts(checkoutsRes.data);
-        } catch (e) {
-          console.error("Data fetch failed", e);
-        }
-      };
-      fetchData();
-    }
-  }, [currentLocation, API_BASE]);
+  const t: any = (translations as any)[language] || translations.EN;
 
   // --- Logic Handlers ---
   const handleLogin = async (cardNumber: string) => {
@@ -65,82 +41,107 @@ function SimpleScanner() {
   };
 
   const handleCheckoutLogic = useCallback(async (barcodeValue: string) => {
-    const itemData: any = items.find((item: any) => barcodeValue === item.external_id);
-
-    if (!itemData) {
-      return Swal.fire({ title: t.not_found, text: t.barcode_error, icon: 'warning' });
-    }
-
-    if (itemData.checkout_id || itemData.onloan) {
-      return Swal.fire({ 
-        title: t.action_denied, 
-        text: `"${itemData.external_id}" ${t.already_checked_out_text}`, 
-        icon: 'error' 
-      });
-    }
-
+    // 1. Local Duplicate Check
     if (displayCheckouts.some((i: any) => i.externalId === barcodeValue)) {
       return Swal.fire({ title: t.already_added, icon: 'info', timer: 1000, showConfirmButton: false });
     }
 
-    const biblio: any = biblios.find((b: any) => b.biblio_id === itemData.biblio_id);
+    Swal.fire({ title: t.scanning_items, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
-    const estDate = new Date();
-    estDate.setDate(estDate.getDate() + 14);
-    const formattedEstDue = estDate.toLocaleDateString('en-US', {
-      month: 'short', day: '2-digit', year: 'numeric'
-    });
+    try {
+      // 2. LIVE Check: Is it already checked out?
+      const checkInCheckout = await axios.get(`${API_BASE}/api/check-book-incheckouts/${barcodeValue}`);
+      if (checkInCheckout.data.checkoutRes.length > 0) {
+        const c = checkInCheckout.data.checkoutRes[0];
+        // Compare current patron with checkout patron (handling number vs string)
+        if (String(c.patron_id) === String(patronId)) {
+          return Swal.fire({ title: "Error", text: "A book is already in your checkout list", icon: 'warning' });
+        } else {
+          return Swal.fire({ title: "Error", text: "A book is already checked out by someone else", icon: 'warning' });
+        }
+      }
 
-    const newSessionItem = {
-      item_id: itemData.item_id,
-      title: biblio?.title || t.loading_title,
-      externalId: itemData.external_id || "No Barcode",
-      dueDate: formattedEstDue,
-      checkoutDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-    };
+      // 3. LIVE Check: Is it reserved?
+      const checkInHolds = await axios.get(`${API_BASE}/api/check-book-inholds/${barcodeValue}`);
+      if (checkInHolds.data.holdRes.length > 0) {
+        const activeHolds = checkInHolds.data.holdRes.sort((a: any, b: any) => a.priority - b.priority);
+        if (String(activeHolds[0].patron_id) !== String(patronId)) {
+          return Swal.fire({ title: "Error", text: "A book is already reserved by someone else", icon: 'warning' });
+        }
+      }
 
-    setDisplayCheckouts((prev: any) => [newSessionItem, ...prev]);
+      // 4. Fetch Details for UI display
+      const response = await axios.get(`${API_BASE}/api/book-details/${barcodeValue}`);
+      const bookData = response.data;
 
-    Swal.fire({
-      title: t.scanned_swal,
-      text: `${newSessionItem.title} ${t.added_msg}`,
-      icon: 'success',
-      timer: 1500,
-      showConfirmButton: false
-    });
-  }, [items, biblios, displayCheckouts, t]);
+      const estDate = new Date();
+      estDate.setDate(estDate.getDate() + 14);
+      const formattedEstDue = estDate.toLocaleDateString('en-US', {
+        month: 'short', day: '2-digit', year: 'numeric'
+      });
+
+      const newSessionItem = {
+        item_id: bookData.item_id,
+        title: bookData.title,
+        externalId: barcodeValue,
+        dueDate: formattedEstDue,
+        checkoutDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+      };
+
+      setDisplayCheckouts((prev: any) => [newSessionItem, ...prev]);
+      Swal.close();
+
+      Swal.fire({
+        title: t.scanned_swal,
+        text: `${newSessionItem.title} ${t.added_msg}`,
+        icon: 'success',
+        timer: 1500,
+        showConfirmButton: false
+      });
+
+    } catch (error: any) {
+      console.error("Scan Error:", error);
+      Swal.fire({ title: t.not_found, text: t.barcode_error, icon: 'warning' });
+    }
+  }, [displayCheckouts, patronId, API_BASE, t, setDisplayCheckouts]);
 
   const handleCheckinLogic = useCallback(async (barcodeValue: string) => {
-    const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
-
-    if (!itemData) {
-      return Swal.fire({ title: t.not_found, text: t.barcode_error, icon: 'warning' });
-    }
-
     if (displayCheckins.some((i: any) => i.barcode === barcodeValue)) {
       return Swal.fire({ title: t.already_added, icon: 'info', timer: 1000, showConfirmButton: false });
     }
 
-    const currentCheckout = checkouts.find((c: any) => c.item_id === itemData.item_id);
-    if (!currentCheckout) {
-      return Swal.fire({ title: t.action_denied, text: t.not_in_list, icon: 'error' });
+    Swal.fire({ title: t.scanning_items, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    try {
+      // 1. Fetch live checkout info for this barcode
+      const checkRes = await axios.get(`${API_BASE}/api/check-book-incheckouts/${barcodeValue}`);
+      const checkoutData = checkRes.data.checkoutRes[0];
+
+      if (!checkoutData) {
+        return Swal.fire({ title: t.not_found, text: t.not_in_list, icon: 'error' });
+      }
+
+      // 2. Fetch Biblio info for title
+      const bookDetails = await axios.get(`${API_BASE}/api/book-details/${barcodeValue}`);
+      
+      const isActuallyOverdue = new Date(checkoutData.due_date) < new Date();
+
+      const newReturn = {
+        biblioId: bookDetails.data.biblio_id,
+        title: bookDetails.data.title,
+        barcode: barcodeValue,
+        isOverdue: isActuallyOverdue,
+        dueDate: checkoutData.due_date
+      };
+
+      setDisplayCheckins((prev: any) => [newReturn, ...prev]);
+      Swal.close();
+      Swal.fire({ title: t.scanned_swal, text: `${newReturn.title} ${t.added_to_return}`, icon: 'success', timer: 1000, showConfirmButton: false });
+
+    } catch (error) {
+      Swal.fire({ title: t.not_found, text: t.barcode_error, icon: 'warning' });
     }
-
-    const isActuallyOverdue = new Date(currentCheckout.due_date) < new Date();
-    const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
-
-    const newReturn = {
-      biblioId: biblio.biblio_id,
-      title: biblio?.title || t.loading_title,
-      barcode: barcodeValue,
-      isOverdue: isActuallyOverdue,
-      dueDate: currentCheckout.due_date
-    };
-
-    setDisplayCheckins((prev: any) => [newReturn, ...prev]);
-    Swal.fire({ title: t.scanned_swal, text: `${newReturn.title} ${t.added_to_return}`, icon: 'success', timer: 1000, showConfirmButton: false });
-
-  }, [items, biblios, checkouts, displayCheckins, t]);
+  }, [displayCheckins, API_BASE, t, setDisplayCheckins]);
 
   // --- Hardware Event Listener ---
   useEffect(() => {

@@ -2,7 +2,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useKiosk } from "../../context/KioskContext";
 import Swal from "sweetalert2";
 import axios from "axios";
-import { checkoutBook } from "../../services/kohaApi";
 import { useEffect } from "react";
 import { sendHoldNotification } from "../../services/emailApi";
 import { translations } from "../../utils/translations"; // Import your translations
@@ -23,9 +22,7 @@ const Footer = () => {
     setDisplayCheckins,
     setDisplayCheckouts,
     setHolds,
-    allHolds,
     API_BASE,
-    allCheckouts,
     setAllHolds,
     setAllCheckouts,
     setPatrons,
@@ -84,28 +81,40 @@ const Footer = () => {
   };
 
   const handleFinalCheckout = async () => {
-    await fetchHolds(); await fetchAllHolds(); await fetchAllCheckouts();
-    if (displayCheckouts.length === 0) return;
-    Swal.fire({ title: 'Processing...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-    try {
-      const { data: latestItems } = await axios.get(`${API_BASE}/api/v1/items`);
-      for (const stagedItem of displayCheckouts) {
-        const dbItem = latestItems.find((i: any) => i.item_id === stagedItem.item_id);
-        if (!dbItem) continue;
-        if (checkouts.some(c => c.item_id === stagedItem.item_id)) throw new Error("MY_LIST");
-        const inCheckouts = allCheckouts.find(c => c.item_id === stagedItem.item_id);
-        if (inCheckouts && inCheckouts.patron_id !== patronId) throw new Error("CHECKOUT_OTHER");
-        const itemHolds = allHolds.filter((hold: any) => hold.biblio_id === dbItem.biblio_id).sort((a: any, b: any) => a.priority - b.priority);
-        if (itemHolds.length > 0 && itemHolds[0].patron_id !== patronId) throw new Error("RESERVED_OTHER");
-      }
-      for (const item of displayCheckouts) { await checkoutBook(patronId, item.item_id); }
-      Swal.close();
-      navigate("/success", { state: { from: path } });
-    } catch (error: any) {
-      let message = error.message === "RESERVED_OTHER" ? "A book is already reserved by someone else" : error.message === "MY_LIST" ? "A book is already on your checkout list" : error.message === "CHECKOUT_OTHER" ? "A book is already checked out by someone else" : error.message;
-      Swal.fire({ title: "Error", text: message, icon: 'error' });
+  if (displayCheckouts.length === 0) return;
+
+  Swal.fire({
+    title: 'Processing...',
+    text: 'Finalizing your checkouts...',
+    didOpen: () => Swal.showLoading(),
+    allowOutsideClick: false
+  });
+
+  try {
+    // Loop through the staged items and perform actual Koha checkout
+    for (const item of displayCheckouts) {
+      // This calls the backend POST route which now performs the checks
+      await axios.post(`${API_BASE}/api/checkout-book/${item.externalId}/${patronId}`);
     }
-  };
+
+    Swal.close();
+    // Do NOT clear setDisplayCheckouts here so SuccessPage can see them
+    navigate("/success", { state: { from: path } });
+
+  } catch (error: any) {
+    console.error("Final Checkout Error:", error);
+
+    // This extracts the specific string we created in the backend
+    const errorMessage = error.response?.data?.error || "Checkout failed";
+
+    Swal.fire({ 
+      title: "Error", 
+      text: errorMessage, 
+      icon: 'error',
+      confirmButtonColor: '#3498db' // Matches your UI
+    });
+  }
+};
 
   const handleCancel = () => { setDisplayCheckouts([]); setDisplayCheckins([]); navigate("/home"); };
 

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom"; // Added useLocation for navigation state
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 import { useKiosk } from '../context/KioskContext';
@@ -7,24 +7,23 @@ import Lottie from "lottie-react";
 import animationData from "../assets/Scanning Document.json";
 import SimpleScanner from '../components/common/TestQrResult';
 import Swal from 'sweetalert2';
-import { translations } from '../utils/translations'; // Import
+import { translations } from '../utils/translations';
+import axios from 'axios';
 
 const CheckoutPage = () => {
   const {
     authorized,
     patronId,
-    biblios,
-    items,
     displayCheckouts,
     setDisplayCheckouts,
     openKeyboard,
-    language // Get language from context
+    language,
+    API_BASE
   } = useKiosk();
 
   const navigate = useNavigate();
 
-  // Translation helper
-  const t:any = (translations as any)[language ] || translations.EN; // Shortcut for translation
+  const t: any = (translations as any)[language] || translations.EN;
 
   useEffect(() => {
     if (!authorized || !patronId) {
@@ -32,52 +31,63 @@ const CheckoutPage = () => {
     }
   }, [authorized, patronId, navigate]);
 
+  // PHASE 1: SCANNING (Does NOT checkout in Koha)
   const handleManualEntry = () => {
-    openKeyboard((barcodeValue) => {
-      const itemData: any = items.find((item: any) => barcodeValue === item.external_id);
+    openKeyboard(async (barcodeValue) => {
+      // Local duplicate check
+      if (displayCheckouts.some((i: any) => i.externalId === barcodeValue)) {
+        return Swal.fire({ title: t.already_added, icon: 'info', timer: 1000, showConfirmButton: false });
+      }
 
-      if (itemData) {
-        if (displayCheckouts.some((i: any) => i.externalId === barcodeValue)) {
-          return Swal.fire({ title: t.already_added, icon: 'info', timer: 1000, showConfirmButton: false });
+      Swal.fire({ title: t.scanning_items, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+      try {
+        // We check for checkouts/holds before adding to the list
+        const checkInCheckout = await axios.get(`${API_BASE}/api/check-book-incheckouts/${barcodeValue}`);
+        const checkInHolds = await axios.get(`${API_BASE}/api/check-book-inholds/${barcodeValue}`);
+
+        // Logic for scan-time warnings
+        if (checkInCheckout.data.checkoutRes.length > 0) {
+          const c = checkInCheckout.data.checkoutRes[0];
+          if (String(c.patron_id) === String(patronId)) {
+            return Swal.fire({ title: "Error", text: "A book is already in your checkout list", icon: 'warning' });
+          } else {
+            return Swal.fire({ title: "Error", text: "A book is already checked out by someone else", icon: 'warning' });
+          }
         }
 
-        const biblio: any = biblios.find((b: any) => b.biblio_id === itemData.biblio_id);
+        if (checkInHolds.data.holdRes.length > 0) {
+          const h = checkInHolds.data.holdRes.sort((a: any, b: any) => a.priority - b.priority)[0];
+          if (String(h.patron_id) !== String(patronId)) {
+            return Swal.fire({ title: "Error", text: "A book is already reserved by someone else", icon: 'warning' });
+          }
+        }
+
+        // If all clear, get details and add to list
+        const response = await axios.get(`${API_BASE}/api/book-details/${barcodeValue}`);
+        const bookData = response.data;
 
         const estDate = new Date();
         estDate.setDate(estDate.getDate() + 14);
-        const formattedEstDue = estDate.toLocaleDateString('en-US', {
-          month: 'short',
-          day: '2-digit',
-          year: 'numeric'
-        });
+        const formattedEstDue = estDate.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
 
         const newSessionItem = {
-          item_id: itemData.item_id,
-          title: biblio?.title || "Unknown Title",
-          externalId: itemData.external_id || "No Barcode",
+          item_id: bookData.item_id,
+          title: bookData.title,
+          externalId: barcodeValue,
           dueDate: formattedEstDue,
           checkoutDate: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
         };
 
         setDisplayCheckouts((prev: any) => [newSessionItem, ...prev]);
+        Swal.close();
 
-        Swal.fire({
-          title: t.scanned_swal,
-          text: `${newSessionItem.title} ${t.added_msg}`,
-          icon: 'success',
-          timer: 1500,
-          showConfirmButton: false
-        });
-
-      } else {
-        Swal.fire({
-          title: t.not_found,
-          text: t.barcode_error,
-          icon: 'warning'
-        });
+      } catch (error: any) {
+        Swal.fire({ title: t.not_found, text: t.barcode_error, icon: 'warning' });
       }
     });
   };
+
 
   return (
     <div className='max-w-[1080px] min-h-[1920px] m-auto border-x border-x-solid border-x-gray-700'>
@@ -102,6 +112,7 @@ const CheckoutPage = () => {
           </div>
         </div>
 
+        {/* List of scanned items */}
         <div className='bg-[rgb(236_240_241)] m-[30px] p-[30px] rounded-[15px]'>
           <div className='font-bold text-[rgb(44_62_80)] flex items-center justify-between mb-4 fy-between'>
             <div className='text-[32px]'>{t.items_scanned_label} ({displayCheckouts.length})</div>
@@ -123,6 +134,7 @@ const CheckoutPage = () => {
               </div>
             ))}
           </div>
+
         </div>
       </div>
       <Footer />

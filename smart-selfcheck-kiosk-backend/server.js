@@ -28,6 +28,138 @@ const authHeader = {
 console.log("-----------------------------------------");
 console.log(`Backend targeting Koha at: ${KOHA_URL}`);
 console.log("-----------------------------------------");
+// 1. API to check if the book is in checkouts
+
+// --- REUSABLE SAFE FETCH FUNCTION ---
+async function safeKohaGet(endpoint) {
+    try {
+        const response = await axios.get(`${KOHA_URL}${endpoint}`, { headers: authHeader });
+        return response.data || [];
+    } catch (error) {
+        console.error(`Error fetching ${endpoint}:`, error.response?.data || error.message);
+        return []; // Always return an array to prevent .find() crashes
+    }
+}
+
+app.get('/api/check-book-incheckouts/:barcode', async (req, res) => {
+  try {
+    const { barcode } = req.params;
+    const itemsRes = await safeKohaGet(`/items?external_id=${barcode}`);
+    const exactBook = itemsRes.find(item => String(item.external_id) === barcode);
+
+    // CRITICAL: Check if book exists before asking for item_id
+    if (!exactBook) {
+      return res.status(404).json({ error: "Book not found" });
+    }
+
+    const checkoutRes = await safeKohaGet(`/checkouts?q={"item_id":${exactBook.item_id}}`);
+    res.json({ checkoutRes: checkoutRes });
+  } catch (err) {
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// 2. API to check if the book is in holds
+app.get('/api/check-book-inholds/:barcode', async (req, res) => {
+  try {
+    const { barcode } = req.params;
+    const itemsRes = await safeKohaGet(`/items?external_id=${barcode}`);
+    const exactBook = itemsRes.find(item => String(item.external_id) === barcode);
+
+    if (!exactBook) {
+      return res.status(404).json({ error: "Book not found" });
+    }
+
+    const holdRes = await safeKohaGet(`/holds?q={"biblio_id":${exactBook.biblio_id}}`);
+    res.json({ holdRes: holdRes });
+  } catch (err) {
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+app.post('/api/checkout-book/:barcode/:patronId', async (req, res) => {
+  try {
+    const { barcode, patronId } = req.params;
+
+    // 1. Get Item & Biblio
+    const itemsRes = await safeKohaGet(`/items?external_id=${barcode}`);
+    const exactBook = itemsRes.find(item => String(item.external_id) === String(barcode));
+    if (!exactBook) return res.status(404).json({ error: "Book not found" });
+
+    // --- CHECK 1: Is it already checked out? ---
+    const checkoutRes = await safeKohaGet(`/checkouts?q={"item_id":${exactBook.item_id}}`);
+    if (checkoutRes.length > 0) {
+      const currentPatron = parseInt(checkoutRes[0].patron_id);
+      if (currentPatron === parseInt(patronId)) {
+        return res.status(400).json({ error: "A book is already in your checkout list" });
+      } else {
+        return res.status(400).json({ error: "A book is already checked out by someone else" });
+      }
+    }
+
+    // --- CHECK 2: Is it reserved by someone else? ---
+    // We check holds for the Biblio. If there are holds and the first person isn't this patron:
+    const holdRes = await safeKohaGet(`/holds?q={"biblio_id":${exactBook.biblio_id}}`);
+    if (holdRes.length > 0) {
+      // Sort by priority to find the person next in line
+      const activeHolds = holdRes.sort((a, b) => a.priority - b.priority);
+      if (parseInt(activeHolds[0].patron_id) !== parseInt(patronId)) {
+        return res.status(400).json({ error: "A book is already reserved by someone else" });
+      }
+    }
+
+    const biblio = await safeKohaGet(`/biblios/${exactBook.biblio_id}`);
+
+    // 3. Perform Actual Checkout if all checks pass
+    const response = await axios.post(`${KOHA_URL}/checkouts`, {
+      patron_id: parseInt(patronId),
+      item_id: parseInt(exactBook.item_id)
+    }, { headers: authHeader });
+
+    res.status(201).json({
+      ...response.data,
+      title: biblio.title || "Unknown Title",
+      external_id: barcode
+    });
+
+  } catch (error) {
+    console.error("Checkout Error:", error.response?.data || error.message);
+    const msg = error.response?.data?.errors?.[0]?.message || 
+                error.response?.data?.error || 
+                "Checkout failed";
+    res.status(error.response?.status || 500).json({ error: msg });
+  }
+});
+// NEW ENDPOINT: Search for book details WITHOUT checking it out
+app.get('/api/book-details/:barcode', async (req, res) => {
+  try {
+    const { barcode } = req.params;
+    const itemsRes = await safeKohaGet(`/items?external_id=${barcode}`);
+    const exactBook = itemsRes.find(item => String(item.external_id) === barcode);
+
+    if (!exactBook) {
+      return res.status(404).json({ error: "Book not found" });
+    }
+
+    // Get Title from Biblio
+    const biblio = await safeKohaGet(`/biblios/${exactBook.biblio_id}`);
+
+    res.json({
+      item_id: exactBook.item_id,
+      title: biblio.title || "Unknown Title",
+      external_id: barcode,
+      biblio_id: exactBook.biblio_id
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Server Error" });
+  }
+});
+
+
+
+
+
 
 function getSipTimestamp() {
     const now = new Date();
@@ -123,16 +255,7 @@ app.post('/api/checkin', async (req, res) => {
     }
 });
 
-// --- REUSABLE SAFE FETCH FUNCTION ---
-async function safeKohaGet(endpoint) {
-    try {
-        const response = await axios.get(`${KOHA_URL}${endpoint}`, { headers: authHeader });
-        return response.data || [];
-    } catch (error) {
-        console.error(`Error fetching ${endpoint}:`, error.response?.data || error.message);
-        return []; // Always return an array to prevent .find() crashes
-    }
-}
+
 
 
 // --- ROUTES ---
