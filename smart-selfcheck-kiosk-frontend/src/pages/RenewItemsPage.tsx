@@ -6,31 +6,35 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 import { formatDate } from '../utils/formatDate';
 import { diffInDaysAccountPage } from '../utils/dueDateFormulate';
-import { translations } from '../utils/translations'; // Import translations
+import { translations } from '../utils/translations';
 
 const RenewItemsPage = () => {
-  const { patronId, checkouts, setCheckouts, biblios, setBiblios, items, setItems, API_BASE, language } = useKiosk();
+  const { 
+    patronId, 
+    checkouts, 
+    setCheckouts, 
+    API_BASE, 
+    language 
+  } = useKiosk();
   
-  // Translation helper
-  const t:any = (translations as any)[language ] || translations.EN;
-  // 1. Initial Data Fetching
+  const t: any = (translations as any)[language] || translations.EN;
+
+  // 1. Initial Data Fetching - Using POST to hide the patronId from the URL
   useEffect(() => {
     const fetchData = async () => {
+      if (!patronId) return;
       try {
-        const [checkoutsRes, bibliosRes, itemsRes] = await Promise.all([
-          axios.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`),
-          axios.get(`${API_BASE}/api/v1/biblios`),
-          axios.get(`${API_BASE}/api/v1/items`)
-        ]);
-        setCheckouts(checkoutsRes.data);
-        setBiblios(bibliosRes.data);
-        setItems(itemsRes.data);
+        // CHANGED: Using .post instead of .get to protect patron privacy
+        const response = await axios.post(`${API_BASE}/api/v1/my-books`, {
+          patronId: patronId
+        });
+        setCheckouts(response.data);
       } catch (e) {
         console.error("Data fetch failed", e);
       }
     };
     fetchData();
-  }, [patronId, API_BASE]);
+  }, [patronId, API_BASE, setCheckouts]);
 
   // 2. Renewal Handler
   const handleRenew = async (checkoutId: number, title: string) => {
@@ -45,7 +49,12 @@ const RenewItemsPage = () => {
     });
 
     if (result.isConfirmed) {
-      Swal.showLoading();
+      Swal.fire({
+        title: t.scanning_items || "Processing...",
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+      });
+
       try {
         const response = await axios.post(`${API_BASE}/api/v1/renew`, {
           checkout_id: checkoutId
@@ -60,7 +69,10 @@ const RenewItemsPage = () => {
             showConfirmButton: false
           });
 
-          const updatedCheckouts = await axios.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`);
+          // Refresh the list using the secure POST method
+          const updatedCheckouts = await axios.post(`${API_BASE}/api/v1/my-books`, {
+            patronId: patronId
+          });
           setCheckouts(updatedCheckouts.data);
         }
       } catch (error: any) {
@@ -75,11 +87,7 @@ const RenewItemsPage = () => {
           friendlyMessage = t.err_overdue;
         }
 
-        Swal.fire({
-          title: t.renewal_blocked,
-          text: friendlyMessage,
-          icon: 'error'
-        });
+        Swal.fire({ title: t.renewal_blocked, text: friendlyMessage, icon: 'error' });
       }
     }
   };
@@ -113,9 +121,8 @@ const RenewItemsPage = () => {
 
           <div className='flex flex-col gap-5'>
             {checkouts.map((checkout: any) => {
-              const itemInfo = (items as any[]).find((i: any) => i.item_id === checkout?.item_id);
-              const biblioInfo = (biblios as any[]).find((b: any) => b.biblio_id === itemInfo?.biblio_id);
-              const title = biblioInfo?.title || t.loading_title;
+              // Access the hydrated title from the backend response
+              const title = checkout.title || "Unknown Title";
               const isOverdue = diffInDaysAccountPage(checkout) <= 0;
 
               return (

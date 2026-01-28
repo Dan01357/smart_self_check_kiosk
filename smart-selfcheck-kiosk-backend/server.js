@@ -156,7 +156,36 @@ app.get('/api/book-details/:barcode', async (req, res) => {
   }
 });
 
+// NEW SECURE ROUTE: Hidden Patron Book Lookup
+app.post('/api/v1/my-books', async (req, res) => {
+    try {
+        const { patronId } = req.body; // Hidden in the request body
 
+        if (!patronId) {
+            return res.status(400).json({ error: "Identification required" });
+        }
+
+        // 1. Get ONLY this patron's checkouts
+        const checkouts = await safeKohaGet(`/patrons/${patronId}/checkouts`);
+
+        // 2. Fetch titles only for these specific checkouts
+        // This is fast because it only fetches the 3-5 books the user actually has
+        const hydratedCheckouts = await Promise.all(checkouts.map(async (c) => {
+            const item = await safeKohaGet(`/items/${c.item_id}`);
+            const biblio = await safeKohaGet(`/biblios/${item.biblio_id}`);
+            
+            return { 
+                ...c, 
+                title: biblio.title || "Unknown Title" 
+            };
+        }));
+
+        res.json(hydratedCheckouts);
+    } catch (error) {
+        console.error("Privacy Route Error:", error.message);
+        res.status(500).json({ error: "Failed to fetch your books" });
+    }
+});
 
 
 

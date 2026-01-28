@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 import Lottie from "lottie-react";
@@ -5,96 +6,85 @@ import animationData from "../assets/Scanning Document.json";
 import { useKiosk } from '../context/KioskContext';
 import SimpleScanner from '../components/common/TestQrResult';
 import Swal from 'sweetalert2';
-import { useEffect } from 'react';
 import axios from 'axios';
-import { translations } from '../utils/translations'; // Import
+import { translations } from '../utils/translations';
 
 const CheckinPage = () => {
   const {
     openKeyboard,
     displayCheckins,
-    items,
-    checkouts,
-    biblios,
     setDisplayCheckins,
-    setCheckouts,
-    setBiblios,
-    setItems,
     patronId,
     API_BASE,
-    allHolds,
     setDisplayHolds,
-    displayHolds,
-    language // Get language
+    language
   } = useKiosk();
 
-  const t:any = (translations as any)[language ] || translations.EN;
+  const t: any = (translations as any)[language] || translations.EN;
 
-  // 1. Data Fetching Logic (Unchanged)
+  // 1. Data Fetching Logic (REMOVED: No longer fetching ALL items/biblios)
   useEffect(() => {
     if (!patronId) return;
-    const fetchCheckouts = async () => {
-      try {
-        const response = await axios.get(`${API_BASE}/api/v1/checkouts?patronId=${patronId}`);
-        setCheckouts(response.data);
-      } catch (e) { console.error("Checkout fetch failed", e); }
-    }
-    const fetchBiblios = async () => {
-      try {
-        const response = await axios.get(`${API_BASE}/api/v1/biblios`);
-        setBiblios(response.data);
-      } catch (e) { console.error("Biblio fetch failed", e); }
-    }
-    const fetchItems = async () => {
-      try {
-        const response = await axios.get(`${API_BASE}/api/v1/items`);
-        setItems(response.data);
-      } catch (e) { console.error("Items fetch failed", e); }
-    }
-    fetchCheckouts();
-    fetchBiblios();
-    fetchItems();
-  }, [patronId, API_BASE, setCheckouts, setBiblios, setItems]);
-
-  // 2. IMMEDIATE HOLD DETECTION LOGIC (Unchanged)
-  useEffect(() => {
-    const detectedHolds = allHolds.filter(hold =>
-      displayCheckins.some(checkinItem =>
-        Number(checkinItem.biblioId) === Number(hold.biblio_id)
-      )
-    );
-    setDisplayHolds(detectedHolds);
-  }, [displayCheckins, allHolds, setDisplayHolds]);
+    // We no longer need to pre-fetch everything here as we fetch per-scan now
+  }, [patronId]);
 
   const handleManualEntry = () => {
-    openKeyboard((barcodeValue) => {
-      const itemData: any = items.find((i: any) => i.external_id === barcodeValue);
-      if (!itemData) {
-        return Swal.fire({ title: t.not_found, text: t.barcode_error, icon: 'warning' });
-      }
-
+    openKeyboard(async (barcodeValue) => {
+      // Local check for duplicates
       if (displayCheckins.some((i: any) => i.barcode === barcodeValue)) {
         return Swal.fire({ title: t.already_added, icon: 'info', timer: 1000, showConfirmButton: false });
       }
 
-      const currentCheckout = checkouts.find((c: any) => c.item_id === itemData.item_id);
-      if (!currentCheckout) {
-        return Swal.fire({ title: t.action_denied, text: t.not_in_list, icon: 'error' });
+      Swal.fire({ title: t.scanning_items, allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+      try {
+        // A. Verify if the book is actually checked out
+        const checkoutCheck = await axios.get(`${API_BASE}/api/check-book-incheckouts/${barcodeValue}`);
+        const checkoutData = checkoutCheck.data.checkoutRes[0];
+
+        if (!checkoutData) {
+          return Swal.fire({ title: t.action_denied, text: t.not_in_list, icon: 'error' });
+        }
+
+        // B. Check for holds
+        const holdCheck = await axios.get(`${API_BASE}/api/check-book-inholds/${barcodeValue}`);
+        const hasHold = holdCheck.data.holdRes.length > 0;
+
+        // C. Get book details (Title/BiblioID)
+        const bookDetails = await axios.get(`${API_BASE}/api/book-details/${barcodeValue}`);
+        const details = bookDetails.data;
+
+        // D. Calculate Overdue status
+        const isActuallyOverdue = new Date(checkoutData.due_date) < new Date();
+
+        const newReturn = {
+          biblioId: details.biblio_id,
+          title: details.title || "Unknown Title",
+          barcode: barcodeValue,
+          isOverdue: isActuallyOverdue,
+          dueDate: checkoutData.due_date,
+          isOnHold: hasHold // Storing this directly for UI logic
+        };
+
+        // E. If a hold is detected, add it to global displayHolds for the OnHoldDetected page logic
+        if (hasHold) {
+            setDisplayHolds((prev: any) => [...holdCheck.data.holdRes, ...prev]);
+        }
+
+        setDisplayCheckins((prev: any) => [newReturn, ...prev]);
+        
+        Swal.fire({ 
+            title: t.scanned_swal, 
+            text: `${newReturn.title} ${t.added_to_return}`, 
+            icon: 'success', 
+            timer: 1500, 
+            showConfirmButton: false 
+        });
+
+      } catch (error: any) {
+        console.error("Checkin Scan Error:", error);
+        Swal.fire({ title: t.not_found, text: t.barcode_error, icon: 'warning' });
       }
-
-      const isActuallyOverdue = new Date(currentCheckout.due_date) < new Date();
-      const biblio: any = biblios.find((b: any) => b.biblio_id === itemData?.biblio_id);
-
-      const newReturn = {
-        biblioId: biblio.biblio_id,
-        title: biblio?.title || "Unknown Title",
-        barcode: barcodeValue,
-        isOverdue: isActuallyOverdue,
-        dueDate: currentCheckout.due_date
-      };
-
-      setDisplayCheckins((prev: any) => [newReturn, ...prev]);
-      Swal.fire({ title: t.scanned_swal, text: `${newReturn.title} ${t.added_to_return}`, icon: 'success', timer: 1500, showConfirmButton: false });
     });
   };
 
@@ -129,19 +119,18 @@ const CheckinPage = () => {
           </div>
           <div className='flex flex-col gap-5'>
             {displayCheckins.map((scannedItem: any, index: number) => {
-              const itemInfo = items.find((i: any) => i.external_id === scannedItem.barcode);
-              const checkoutInfo = checkouts.find((c: any) => c.item_id === itemInfo?.item_id);
-              const finalDueDate = checkoutInfo ? checkoutInfo.due_date : scannedItem.dueDate;
-              
+              // Date logic strictly using the item properties added during scan
               const today = new Date();
               today.setHours(0, 0, 0, 0);
-              const dueDateObj = new Date(finalDueDate);
+              const dueDateObj = new Date(scannedItem.dueDate);
               dueDateObj.setHours(0, 0, 0, 0);
 
               const diffInDaysNormalized = Math.round((dueDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
               const isOverdue = diffInDaysNormalized < 0;
               const daysLate = Math.abs(diffInDaysNormalized);
-              const isOnHold = displayHolds.some((hold: any) => Number(hold.biblio_id) === Number(scannedItem.biblioId));
+              
+              // Hold logic using the property we added during the async scan
+              const isOnHold = scannedItem.isOnHold;
 
               let statusColor = '#3498db';
               let statusEmoji = '📘';
