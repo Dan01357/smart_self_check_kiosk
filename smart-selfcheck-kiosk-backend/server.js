@@ -255,6 +255,11 @@ app.post('/api/v1/my-books', async (req, res) => {
 /**
  * Retrieves all active reservations (holds) for a specific patron.
  */
+/**
+ * Retrieves all active reservations (holds) for a specific patron.
+ * Enhanced Logic: Checks if the book is currently checked out to determine 
+ * if a Priority #1 hold is "Ready" or "Pending #1".
+ */
 app.post('/api/v1/my-holds', async (req, res) => {
     try {
         const { patronId } = req.body;
@@ -262,17 +267,35 @@ app.post('/api/v1/my-holds', async (req, res) => {
         if (!holds || holds.length === 0) return res.json([]);
 
         const biblioIds = [...new Set(holds.map(h => h.biblio_id))];
-        const biblioQuery = JSON.stringify({ "biblio_id": { "-in": biblioIds } });
-        const biblios = await safeKohaGet(`/biblios?q=${encodeURIComponent(biblioQuery)}`);
+        
+        // Fetch Biblios, Items, and Checkouts in parallel for efficiency
+        const [biblios, allItems, allCheckouts] = await Promise.all([
+            safeKohaGet(`/biblios?q=${encodeURIComponent(JSON.stringify({ "biblio_id": { "-in": biblioIds } }))}`),
+            safeKohaGet(`/items?q=${encodeURIComponent(JSON.stringify({ "biblio_id": { "-in": biblioIds } }))}`),
+            safeKohaGet(`/checkouts`) // Get active checkouts to check availability
+        ]);
 
-        res.json(holds.map(h => {
-            const b = Array.isArray(biblios) ? biblios.find(bib => bib.biblio_id === h.biblio_id) : null;
+        const processedHolds = holds.map(h => {
+            const biblio = Array.isArray(biblios) ? biblios.find(b => b.biblio_id === h.biblio_id) : null;
+            
+            // Logic: Check if there are any items for this biblio that are NOT currently checked out
+            const biblioItems = allItems.filter(item => item.biblio_id === h.biblio_id);
+            const biblioItemIds = biblioItems.map(i => i.item_id);
+            const activeCheckoutsForBiblio = allCheckouts.filter(c => biblioItemIds.includes(c.item_id));
+
+            // If number of items equals number of checkouts, the book is fully checked out
+            const isFullyCheckedOut = biblioItems.length > 0 && (biblioItems.length <= activeCheckoutsForBiblio.length);
+
             return { 
                 ...h, 
-                title: b ? b.title : "Unknown Title" 
+                title: biblio ? biblio.title : "Unknown Title",
+                is_checked_out: isFullyCheckedOut
             };
-        }));
+        });
+
+        res.json(processedHolds);
     } catch (error) {
+        console.error("My Holds Error:", error.message);
         res.status(500).json([]);
     }
 });

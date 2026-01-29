@@ -98,15 +98,22 @@ const HoldsPage = () => {
   /**
    * Helper function to determine the visual status of a hold.
    * Logic based on Koha hold flags (waiting, transit, or priority queue).
+   * Logic Update:
+   * 1. Ready: waiting_date exists OR (Priority 1 AND NOT checked out).
+   * 2. Pending #1: Priority 1 AND IS checked out.
+   * 3. Pending #2+: Always shows line number.
    */
   const getStatusDisplay = (hold: any) => {
+    // Logic Rule 1: Ready
+    const isReady = hold.waiting_date || (hold.priority === 1 && !hold.is_checked_out);
+
     // Item is ready for the user to pick up
-    if (hold.waiting_date) return { label: t.ready_pickup, color: 'bg-green-500', icon: '✅' };
+    if (isReady) return { label: t.ready_pickup, color: 'bg-green-500', icon: '✅' };
     
     // Item is being moved from one branch to another
     if (hold.transit_date) return { label: t.in_transit, color: 'bg-blue-400', icon: '🚚' };
     
-    // Item is still in the queue
+    // Logic Rule 2 & 3: Pending #1 (if checked out) or Pending #2+
     return { label: `${t.pending} (#${hold.priority} ${t.in_line})`, color: 'bg-amber-500', icon: '⏳' };
   };
 
@@ -126,10 +133,10 @@ const HoldsPage = () => {
               <div className='text-[20px] opacity-80'>{t.total_holds}</div>
             </div>
             <div className='w-[2px] h-[80px] bg-white/30'></div>
-            {/* Count of items specifically ready for pickup */}
+            {/* Count of items specifically ready for pickup based on new logic */}
             <div className='text-center'>
               <div className='text-[50px] font-bold'>
-                {loading ? "..." : holds.filter((h: any) => h.waiting_date).length}
+                {loading ? "..." : holds.filter((h: any) => h.waiting_date || (h.priority === 1 && !h.is_checked_out)).length}
               </div>
               <div className='text-[20px] opacity-80'>{t.ready_for_pickup}</div>
             </div>
@@ -146,9 +153,10 @@ const HoldsPage = () => {
               holds.map((hold: any) => {
                 const status = getStatusDisplay(hold);
                 const title = hold.title || "Unknown Title";
+                const isReady = hold.waiting_date || (hold.priority === 1 && !hold.is_checked_out);
 
                 return (
-                  <div key={hold.hold_id} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[8px] shadow-sm' style={{ borderLeftColor: hold.waiting_date ? '#2ecc71' : '#f39c12' }}>
+                  <div key={hold.hold_id} className='flex bg-white rounded-[12px] items-center p-[25px] border-l-solid border-l-[8px] shadow-sm' style={{ borderLeftColor: isReady ? '#2ecc71' : '#f39c12' }}>
                     {/* Status Icon */}
                     <div className='text-[60px] min-w-[60px] mr-6'>{status.icon}</div>
 
@@ -167,8 +175,8 @@ const HoldsPage = () => {
                       </span>
                     </div>
 
-                    {/* Only show Cancel button if the item is not already waiting for pickup */}
-                    {!hold.waiting_date && (
+                    {/* Only show Cancel button if the item is not already ready for pickup */}
+                    {!isReady && (
                       <button
                         onClick={() => handleCancelHold(hold.hold_id, title)}
                         className='bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-[25px] py-[15px] rounded-[12px] text-[20px] font-bold transition-all'

@@ -77,18 +77,25 @@ const AccountPage = () => {
 
   /**
    * Helper function to determine visual styling and labels for different hold statuses.
-   * Logic matches Koha hold shelf states.
+   * Logic: 
+   * 1. Ready: waiting_date exists OR (Priority 1 AND NOT checked out).
+   * 2. Pending #1: Priority 1 AND IS checked out.
+   * 3. Pending #2+: Always shows line number.
    */
   const getHoldDisplay = (hold: any) => {
-    // Case 1: Book is already at the library waiting for the patron
-    if (hold.waiting_date) {
+    // Logic Rule 1: Ready
+    const isReady = hold.waiting_date || (hold.priority === 1 && !hold.is_checked_out);
+    
+    if (isReady) {
       return { label: t.ready_pickup, color: '#2ecc71', icon: '✅', rightIcon: '📍' };
     }
-    // Case 2: Book is moving between library branches
+
+    // Transit status (preserve existing logic)
     if (hold.transit_date) {
       return { label: t.in_transit, color: '#3498db', icon: '🚚', rightIcon: '📦' };
     }
-    // Case 3: Book is still with another patron or on the shelf (Waiting in queue)
+
+    // Logic Rule 2 & 3: Pending #1 (if checked out) or Pending #2+
     return {
       label: `${t.pending} (#${hold.priority} ${t.in_line})`,
       color: '#f39c12',
@@ -97,8 +104,10 @@ const AccountPage = () => {
     };
   };
 
-  // Count of holds that are specifically in the 'waiting' (ready) state
-  const readyHoldsCount = holds.filter(h => h.waiting_date).length;
+  // Count of holds that meet the 'Ready' criteria
+  const readyHoldsCount = holds.filter(hold => 
+    hold.waiting_date || (hold.priority === 1 && !hold.is_checked_out)
+  ).length;
 
   return (
     <div className='max-w-[1080px] min-h-[1920px] m-auto border-x border-x-solid border-x-gray-700'>
@@ -138,7 +147,6 @@ const AccountPage = () => {
                 <div className="text-center py-10 text-[22px] text-gray-500 italic">{t.scanning_items}...</div>
             ) : checkouts.length > 0 ? checkouts.map((checkout: any) => {
               const title = checkout.title || "Unknown Title";
-              // Flag indicating if someone else is waiting for this specific copy
               const isOnHold = checkout.is_on_hold_for_others || false; 
 
               const today = new Date();
@@ -152,7 +160,6 @@ const AccountPage = () => {
               const daysLate = Math.abs(diffInDaysNormalized);
               const daysLeft = diffInDaysNormalized;
 
-              // Color logic: Red = Overdue, Orange = Recall/Hold by another, Blue = OK
               let statusColor = '#3498db';
               let statusEmoji = '📘';
 
@@ -166,7 +173,6 @@ const AccountPage = () => {
                     <div className='text-[26px] font-bold text-[#2c3e50] leading-tight'>{title}</div>
                     <div className='text-[20px] text-[#7f8c8d]'>{t.due}: {formatDate(checkout.due_date)}</div>
                     <div className='text-[22px] font-bold' style={{ color: statusColor }}>
-                      {/* Logic update: Stack 'on hold' below 'overdue' if both are true */}
                       {isOnHold && isOverdue 
                         ? (
                           <div className='flex flex-col'>
