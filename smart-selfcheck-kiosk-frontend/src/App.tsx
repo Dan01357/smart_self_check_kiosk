@@ -6,6 +6,7 @@ import { Route, Routes } from "react-router-dom";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import PublicRoute from "./components/auth/PublicRoute";
 import Numpad from "./components/common/Numpad";
+import IdleTimer from "./components/auth/IdleTimer";
 
 // 2. Lazy Loading: These page components are only downloaded by the browser 
 // when the user actually navigates to the specific route. This improves 
@@ -55,6 +56,7 @@ const PageLoader = () => (
 function App() {
   return (
     <>
+      <IdleTimer />
       {/* 
           3. Suspense Wrapper:
           All Routes containing lazy-loaded components must be wrapped in <Suspense>. 
@@ -83,11 +85,11 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/home" element={<HomePage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
-            
+
             <Route path="/hold" element={<HoldsPage />} />
             <Route path="/account" element={<AccountPage />} />
             <Route path="/renew" element={<RenewItemsPage />} />
-            
+
             <Route path="/help" element={<HelpPage />} />
           </Route>
 
