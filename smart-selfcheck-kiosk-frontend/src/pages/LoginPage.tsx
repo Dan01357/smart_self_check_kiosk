@@ -81,7 +81,7 @@ const LoginPage = () => {
           icon: 'error'
         });
       }
-    }, t.enter_card_prompt || "Enter Card Number");
+    }, t.enter_card_title || "Enter Card Number");
   };
 
   // Handler for Quick Return
