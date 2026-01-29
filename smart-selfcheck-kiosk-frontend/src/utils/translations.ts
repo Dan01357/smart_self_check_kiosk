@@ -5,6 +5,7 @@ export const translations = {
     // --- Header & Home ---
     self_checkout: "Self Checkout",
     login_required: "Login Required",
+    login_first_msg: "Please login first to proceed",
     my_account: "My Account",
     checkout_mode: "Checkout Mode",
     return_mode: "Return Mode",
@@ -251,6 +252,7 @@ export const translations = {
     // --- Header & Home ---
     self_checkout: "セルフチェックアウト",
     login_required: "ログインが必要です",
+    login_first_msg: "続行するにはまずログインしてください",
     my_account: "マイアカウント",
     checkout_mode: "貸出モード",
     return_mode: "返却モード",
@@ -494,6 +496,7 @@ export const translations = {
     // --- Header & Home ---
     self_checkout: "셀프 체크아웃",
     login_required: "로그인이 필요합니다",
+    login_first_msg: "진행하려면 먼저 로그인해 주세요",
     my_account: "마이 페이지",
     checkout_mode: "대출 모드",
     return_mode: "반납 모드",
