@@ -234,7 +234,7 @@ export const translations = {
     place_id_flat: "Place your id flat on the reader pad below",
     card_label: "Card",
     login_failed_err: "Login failed.",
-    //--KeyboardPad--
+    //--Numpad--
     enter_details: "Enter details:",
     done_btn_keyboard: "Done",
     //--User Btn--
@@ -477,7 +477,7 @@ export const translations = {
     place_id_flat: "リーダーの上にIDカードを平らに置いてください",
     card_label: "カード",
     login_failed_err: "ログインに失敗しました。",
-    //--KeyboardPad--
+    //--Numpad--
     enter_details: "詳細を入力してください:",
     done_btn_keyboard: "完了",
     //--User Btn--
@@ -720,7 +720,7 @@ export const translations = {
     place_id_flat: "리더기 위에 신분증을 평평하게 놓아주세요",
     card_label: "카드",
     login_failed_err: "로그인에 실패했습니다.",
-    //--KeyboardPad--
+    //--Numpad--
     enter_details: "상세 정보를 입력하세요:",
     done_btn_keyboard: "완료",
     //--User Btn

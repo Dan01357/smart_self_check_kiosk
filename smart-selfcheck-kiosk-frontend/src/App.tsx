@@ -5,7 +5,7 @@ import { Route, Routes } from "react-router-dom";
 // core logic (Auth guards) or are small enough to be included in the main bundle.
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import PublicRoute from "./components/auth/PublicRoute";
-import KeyboardPad from "./components/common/KeyboardPad";
+import Numpad from "./components/common/Numpad";
 
 // 2. Lazy Loading: These page components are only downloaded by the browser 
 // when the user actually navigates to the specific route. This improves 
@@ -101,7 +101,7 @@ function App() {
           Placed outside the Routes so it can be triggered from any page 
           in the application for data entry via the touch interface.
       */}
-      <KeyboardPad />
+      <Numpad />
     </>
   );
 }

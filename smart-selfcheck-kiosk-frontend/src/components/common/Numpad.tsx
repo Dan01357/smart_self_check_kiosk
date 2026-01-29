@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useKiosk } from "../../context/KioskContext";
 import { translations } from "../../utils/translations";
-
-export default function KeyboardPad() {
+ 
+export default function Numpad() {
   const { isKeyboardOpen, closeKeyboard, keyboardCallback, language, keyboardPrompt } = useKiosk();
   const [input, setInput] = useState<string>("");
 
