@@ -50,19 +50,19 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
   const [patronName, setPatronName] = useState<string>(() => localStorage.getItem("kiosk_patron_name") || '');
 
   // --- Session Lists ---
-  const [displayCheckouts, setDisplayCheckouts] = useState<any[]>([]);
-  const [displayCheckins, setDisplayCheckins] = useState<any[]>([]);
-  const [displayHolds, setDisplayHolds] = useState<any[]>([]);
+  const [displayCheckouts, setDisplayCheckouts] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_display_checkouts") || "[]"));
+  const [displayCheckins, setDisplayCheckins] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_display_checkins") || "[]"));
+  const [displayHolds, setDisplayHolds] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_display_holds") || "[]"));
 
   // --- Account Data ---
-  const [checkouts, setCheckouts] = useState<any[]>([]);
-  const [holds, setHolds] = useState<any[]>([]);
+  const [checkouts, setCheckouts] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_checkouts") || "[]"));
+  const [holds, setHolds] = useState<any[]>(() => JSON.parse(localStorage.getItem("kiosk_holds") || "[]"));
   
   // --- UI Logic States ---
-  const [keyboardPrompt, setKeyboardPrompt] = useState<string>("");
-  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [keyboardPrompt, setKeyboardPrompt] = useState<string>(() => localStorage.getItem("kiosk_kb_prompt") || "");
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(() => localStorage.getItem("kiosk_kb_open") === "true");
   const [keyboardCallback, setKeyboardCallback] = useState<(val: string) => void>(() => () => { });
-  const [showScanner, setShowScanner] = useState(false);
+  const [showScanner, setShowScanner] = useState(() => localStorage.getItem("kiosk_show_scanner") === "true");
 
   // --- Language ---
   const [language, setLanguage] = useState<'EN' | 'JP' | 'KO'>(() => {
@@ -78,13 +78,28 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
     return "EN";
   });
 
-  // Persist Identity only
+  // Persist all state values to localStorage
   useEffect(() => {
     localStorage.setItem("kiosk_auth", authorized.toString());
     localStorage.setItem("kiosk_patron_id", patronId.toString());
     localStorage.setItem("kiosk_patron_name", patronName);
     localStorage.setItem("kiosk_lang", JSON.stringify(language));
-  }, [authorized, patronId, patronName, language]);
+    
+    localStorage.setItem("kiosk_display_checkouts", JSON.stringify(displayCheckouts));
+    localStorage.setItem("kiosk_display_checkins", JSON.stringify(displayCheckins));
+    localStorage.setItem("kiosk_display_holds", JSON.stringify(displayHolds));
+    
+    localStorage.setItem("kiosk_checkouts", JSON.stringify(checkouts));
+    localStorage.setItem("kiosk_holds", JSON.stringify(holds));
+    
+    localStorage.setItem("kiosk_kb_prompt", keyboardPrompt);
+    localStorage.setItem("kiosk_kb_open", isKeyboardOpen.toString());
+    localStorage.setItem("kiosk_show_scanner", showScanner.toString());
+  }, [
+    authorized, patronId, patronName, language, 
+    displayCheckouts, displayCheckins, displayHolds, 
+    checkouts, holds, keyboardPrompt, isKeyboardOpen, showScanner
+  ]);
 
   const logout = useCallback(() => {
     setAuthorized(false);
@@ -95,6 +110,8 @@ export const KioskProvider = ({ children }: { children: ReactNode }) => {
     setDisplayHolds([]);
     setCheckouts([]);
     setHolds([]);
+    setIsKeyboardOpen(false);
+    setShowScanner(false);
     localStorage.clear();
     window.location.href = "/";
   }, []);
