@@ -243,10 +243,10 @@ export const translations = {
     //--Checkout Errors--
     already_in_list: "A book is already in your checkout list",
     already_borrowed: "A book is already checked out by someone else",
-    already_reserved: "A book is already reserved by someone else", 
+    already_reserved: "A book is already reserved by someone else",
     //--extras--
     quick_return_title: "Quick Return (No Login)",
-    quick_return_sub: "Drop books without scanning your QR",
+    quick_return_sub: "Return books without logging in",
   },
   JP: {
     // --- Header & Home ---
@@ -490,7 +490,7 @@ export const translations = {
     already_reserved: "この本はすでに他の利用者に予約されています。",
     //--extras--
     quick_return_title: "クイック返却 (ログイン不要)",
-    quick_return_sub: "QR 스캔 없이 바로 도서 반납", 
+    quick_return_sub: "ログインせずに本を返却する",
   },
   KO: {
     // --- Header & Home ---
@@ -734,6 +734,6 @@ export const translations = {
     already_reserved: "이미 다른 이용자가 예약한 도서입니다.",
     //--extras--
     quick_return_title: "빠른 반납 (비로그인)",
-    quick_return_sub: "QR 스캔 없이 바로 도서 반납", 
+    quick_return_sub: "로그인 없이 책 반납하기 ",
   }
 };
