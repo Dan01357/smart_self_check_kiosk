@@ -24,9 +24,6 @@ export default function Numpad() {
     closeKeyboard();
   };
 
-  // Logic to check if the prompt requires a hidden input
-  const isPassword = keyboardPrompt?.toLowerCase().includes("password") || 
-                     keyboardPrompt?.toLowerCase().includes("pin");
 
   // Reusable button component to maintain your requested design
   const KeyButton = ({ children, onClick, className = "" }: any) => (
@@ -50,7 +47,7 @@ export default function Numpad() {
           <input
             autoFocus
             readOnly // Readonly because we use the custom buttons
-            type={isPassword ? "password" : "text"}
+            type="password"
             value={input}
             className="w-full p-4 text-2xl text-center border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 mb-4 bg-gray-50"
             placeholder="••••"
